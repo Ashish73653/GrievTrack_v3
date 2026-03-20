@@ -3,16 +3,36 @@
 {% block title %}Timeline | GrievTrack{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Timeline</h1>
-    <p>Lookup a complaint to review every anchored event in chronological order.</p>
+<div class="page-header">
+    <div>
+        <h1>Timeline</h1>
+        <p>Review anchored events in chronological order for a single complaint.</p>
+    </div>
+    <div class="quick">
+        <a class="btn btn-secondary" href="{{ url_for('audit') }}">Verify chain</a>
+    </div>
+</div>
+
+<section class="card stack">
+    <div class="section-title">
+        <div>
+            <h3>Lookup complaint</h3>
+            <p class="muted small">Enter a complaint ID to pull both on-chain and off-chain events.</p>
+        </div>
+        <span class="badge-neutral">Read-only</span>
+    </div>
 
     <form method="get" action="{{ url_for('timeline') }}" class="form">
-        <div class="field inline">
-            <label for="complaint_id">Complaint ID</label>
-            <input id="complaint_id" name="complaint_id" type="text" value="{{ complaint_id }}" placeholder="Enter complaint id">
+        <div class="form-grid">
+            <div class="field">
+                <label for="complaint_id">Complaint ID</label>
+                <input id="complaint_id" name="complaint_id" type="text" value="{{ complaint_id }}" placeholder="CMP-YYYY-XXXXXX">
+                <p class="input-note">Leave blank to browse later, or paste from the receipt copy button.</p>
+            </div>
         </div>
-        <button type="submit">Load timeline</button>
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Load timeline</button>
+        </div>
     </form>
 
     {% if error %}
@@ -20,25 +40,60 @@
     {% endif %}
 
     {% if complaint %}
-    <div class="card">
-        <h2>{{ complaint.title or "Complaint " ~ complaint.complaint_id }}</h2>
-        <p><strong>ID:</strong> {{ complaint.complaint_id }} | <strong>Status:</strong> {{ complaint.current_status }}</p>
+    <div class="card" style="margin:0;">
+        <div class="section-title">
+            <div>
+                <h3>{{ complaint.title or "Complaint " ~ complaint.complaint_id }}</h3>
+                <p class="muted small">Anchored at {{ complaint.created_at or "N/A" }}</p>
+            </div>
+            <span class="badge badge-neutral">{{ complaint.current_status or "UNKNOWN" }}</span>
+        </div>
+        <div class="meta-grid">
+            <div class="meta-tile">
+                <p class="meta-label">Complaint ID</p>
+                <p class="meta-value mono">{{ complaint.complaint_id }}</p>
+            </div>
+            <div class="meta-tile">
+                <p class="meta-label">Category</p>
+                <p class="meta-value">{{ complaint.category or "—" }}</p>
+            </div>
+            <div class="meta-tile">
+                <p class="meta-label">Priority</p>
+                <p class="meta-value">{{ complaint.priority or "—" }}</p>
+            </div>
+            <div class="meta-tile">
+                <p class="meta-label">Citizen</p>
+                <p class="meta-value">{{ complaint.citizen_id or "—" }}</p>
+            </div>
+            <div class="meta-tile">
+                <p class="meta-label">Status</p>
+                <p class="meta-value">{{ complaint.current_status or "—" }}</p>
+            </div>
+            <div class="meta-tile">
+                <p class="meta-label">Created</p>
+                <p class="meta-value">{{ complaint.created_at or "—" }}</p>
+            </div>
+        </div>
     </div>
 
     {% if events %}
     <ol class="timeline">
         {% for event in events %}
-        <li>
-            <div class="timeline-event">
-                <div class="meta">
-                    <span class="badge">{{ event.event_type }}</span>
+        <li class="timeline-item">
+            <div class="timeline-card">
+                <div class="timeline-meta">
+                    <span class="badge badge-neutral">{{ event.event_type }}</span>
                     <span>{{ event.timestamp }}</span>
                     <span>by {{ event.actor_id }}</span>
                 </div>
                 <p>{{ event.remarks }}</p>
                 <div class="hash">
-                    <div><strong>Event ID:</strong> {{ event.event_id }}</div>
-                    <div><strong>Event Hash:</strong> {{ event.event_hash or "Not anchored" }}</div>
+                    <div><strong>Event ID:</strong> <span class="mono">{{ event.event_id }}</span></div>
+                    <div class="hash-cell"><strong>Event hash:</strong> <span class="mono">{{ event.event_hash or "Not anchored" }}</span>
+                        {% if event.event_hash %}
+                        <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ event.event_hash }}">Copy</button>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </li>

@@ -4,23 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}GrievTrack{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <header class="topbar">
-        <div class="brand">GrievTrack</div>
-        <nav class="nav">
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('submit') }}">Submit</a>
-            <a href="{{ url_for('update') }}">Update</a>
-            <a href="{{ url_for('timeline') }}">Timeline</a>
-            <a href="{{ url_for('audit') }}">Audit</a>
-            <a href="{{ url_for('benchmark_run') }}">Benchmark</a>
-            <a href="{{ url_for('reset') }}">Reset</a>
-        </nav>
+        <div class="shell topbar__inner">
+            <a class="brand" href="{{ url_for('dashboard') }}">
+                <span class="dot"></span>
+                GrievTrack
+            </a>
+            <nav class="nav">
+                <a class="nav-link {% if request.endpoint in ['dashboard'] %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a class="nav-link {% if request.endpoint in ['submit'] %}active{% endif %}" href="{{ url_for('submit') }}">Submit</a>
+                <a class="nav-link {% if request.endpoint in ['update'] %}active{% endif %}" href="{{ url_for('update') }}">Update</a>
+                <a class="nav-link {% if request.endpoint in ['timeline'] %}active{% endif %}" href="{{ url_for('timeline') }}">Timeline</a>
+                <a class="nav-link {% if request.endpoint in ['audit'] %}active{% endif %}" href="{{ url_for('audit') }}">Audit</a>
+                <a class="nav-link {% if request.endpoint in ['benchmark_run'] %}active{% endif %}" href="{{ url_for('benchmark_run') }}">Benchmark</a>
+                <a class="nav-link {% if request.endpoint in ['reset'] %}active{% endif %}" href="{{ url_for('reset') }}">Reset</a>
+            </nav>
+            <div class="top-actions print-hide">
+                <a class="btn btn-ghost" href="{{ url_for('submit') }}">New grievance</a>
+                <a class="btn btn-primary" href="{{ url_for('audit') }}">Launch audit</a>
+            </div>
+        </div>
     </header>
-    <main class="content">
+    <main class="shell content">
         {% block content %}{% endblock %}
     </main>
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
 </html>

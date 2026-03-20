@@ -3,93 +3,147 @@
 {% block title %}Audit | GrievTrack{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Auditor</h1>
-    <p>Verify anchored complaint events, simulate tampering, and export evidence for an audit trail.</p>
+<div class="page-header">
+    <div>
+        <h1>Auditor</h1>
+        <p>Verify anchored complaint events, simulate tampering, and export evidence.</p>
+    </div>
+    <div class="quick">
+        <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a class="btn btn-secondary" href="{{ url_for('benchmark_run') }}">Benchmark</a>
+    </div>
+</div>
 
-    <form method="post" class="form">
-        <div class="field inline">
-            <label for="complaint_id">Complaint ID</label>
-            <input id="complaint_id" name="complaint_id" type="text" value="{{ complaint_id }}" placeholder="CMP-YYYY-XXXXXX" required>
+<section class="stack">
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3>Input panel</h3>
+                <p class="muted small">Provide a complaint_id to verify the ledger chain or simulate tampering.</p>
+            </div>
+            <span class="badge-neutral">Step 3 of 3</span>
         </div>
-        <div class="actions">
-            <button type="submit" name="action" value="verify">Verify</button>
-            <button type="submit" name="action" value="tamper" class="ghost">Simulate Tamper</button>
-        </div>
-    </form>
-
-    {% if error %}
-    <div class="alert error">{{ error }}</div>
-    {% endif %}
-    {% if tamper_note %}
-    <div class="alert success">{{ tamper_note }}</div>
-    {% endif %}
+        <form method="post" class="form">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="complaint_id">Complaint ID</label>
+                    <input id="complaint_id" name="complaint_id" type="text" value="{{ complaint_id }}" placeholder="CMP-YYYY-XXXXXX" required>
+                    <p class="input-note">Accepts IDs from the receipt or timeline. Uses canonical payloads for hashing.</p>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" type="submit" name="action" value="verify">Verify</button>
+                <button class="btn btn-secondary" type="submit" name="action" value="tamper">Simulate tamper</button>
+                {% if latest_run_id is not none %}
+                <a class="btn btn-ghost" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Download JSON</a>
+                {% endif %}
+            </div>
+        </form>
+        {% if error %}
+        <div class="alert error">{{ error }}</div>
+        {% endif %}
+        {% if tamper_note %}
+        <div class="alert success">{{ tamper_note }}</div>
+        {% endif %}
+    </div>
 
     {% if audit_result %}
-    <div class="metrics-grid">
-        <div class="metric">
-            <p class="muted">EIS (Integrity)</p>
-            <h2>{{ audit_result.summary.eis_score }}%</h2>
-            <p class="muted small">{{ audit_result.summary.matched }}/{{ audit_result.summary.total }} matched</p>
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3>Metrics</h3>
+                <p class="muted small">EIS, CVL, and chain continuity for this run.</p>
+            </div>
+            <div class="actions print-hide">
+                <button class="btn btn-ghost" data-print>Print report</button>
+                {% if latest_run_id is not none %}
+                <a class="btn btn-secondary" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Download JSON</a>
+                {% endif %}
+            </div>
         </div>
-        <div class="metric">
-            <p class="muted">CVL (ms)</p>
-            <h2>{{ audit_result.summary.cvl_ms }}</h2>
-            <p class="muted small">Verification latency</p>
-        </div>
-        <div class="metric">
-            <p class="muted">Chain Status</p>
-            <h2>{{ audit_result.summary.chain_status }}</h2>
-            <p class="muted small">Prev-hash continuity</p>
-        </div>
-        <div class="metric">
-            <p class="muted">OAI</p>
-            <h2>{{ audit_result.summary.oai.status }}</h2>
-            {% if audit_result.summary.oai.duration_hours %}
-            <p class="muted small">{{ audit_result.summary.oai.duration_hours }}h vs {{ audit_result.summary.oai.sla_hours }}h SLA</p>
-            {% else %}
-            <p class="muted small">Insufficient data</p>
-            {% endif %}
-        </div>
-        <div class="metric">
-            <p class="muted">Run</p>
-            <h2>#{{ audit_result.run_id }}</h2>
-            <p class="muted small">{{ audit_result.timestamp }}</p>
+        <div class="metric-strip">
+            {% set chain_class = 'badge-success' if audit_result.summary.chain_status in ['OK','LEGACY'] else 'badge-danger' %}
+            <div class="metric-tile">
+                <h4>EIS</h4>
+                <p class="big">{{ audit_result.summary.eis_score }}%</p>
+                <p class="muted small">{{ audit_result.summary.matched }}/{{ audit_result.summary.total }} matched</p>
+            </div>
+            <div class="metric-tile">
+                <h4>CVL (ms)</h4>
+                <p class="big">{{ audit_result.summary.cvl_ms }}</p>
+                <p class="muted small">Verification latency</p>
+            </div>
+            <div class="metric-tile">
+                <h4>Chain status</h4>
+                <p class="big"><span class="badge {{ chain_class }}">{{ audit_result.summary.chain_status }}</span></p>
+                <p class="muted small">Prev-hash continuity</p>
+            </div>
+            <div class="metric-tile">
+                <h4>OAI</h4>
+                <p class="big">{{ audit_result.summary.oai.status }}</p>
+                {% if audit_result.summary.oai.duration_hours %}
+                <p class="muted small">{{ audit_result.summary.oai.duration_hours }}h vs {{ audit_result.summary.oai.sla_hours }}h SLA</p>
+                {% else %}
+                <p class="muted small">Insufficient data</p>
+                {% endif %}
+            </div>
+            <div class="metric-tile">
+                <h4>Run</h4>
+                <p class="big">#{{ audit_result.run_id }}</p>
+                <p class="muted small">{{ audit_result.timestamp }}</p>
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <h3>Event Verification</h3>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Event</th>
-                    <th>Type</th>
-                    <th>Actor</th>
-                    <th>Remarks</th>
-                    <th>Chain</th>
-                    <th>Prev Ref</th>
-                    <th>Status</th>
-                    <th>Ledger Hash</th>
-                    <th>Recomputed</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for event in audit_result.events %}
-                <tr>
-                    <td>{{ event.event_id }}</td>
-                    <td><span class="badge">{{ event.event_type }}</span></td>
-                    <td>{{ event.actor_id }}</td>
-                    <td>{{ event.remarks }}</td>
-                    <td><span class="chip status-{{ event.chain_status|lower }}">{{ event.chain_status }}</span></td>
-                    <td class="mono small">{{ event.expected_prev_event_hash }}</td>
-                    <td><span class="chip status-{{ event.status|lower }}">{{ event.status }}</span></td>
-                    <td class="mono">{{ event.ledger_hash or "—" }}</td>
-                    <td class="mono">{{ event.recomputed_hash }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="section-title">
+            <div>
+                <h3 class="table-title">Verification results</h3>
+                <p class="table-subtitle">Status badges indicate MATCH, TAMPERED, or ledger gaps.</p>
+            </div>
+            <span class="badge-neutral">Hash-level detail</span>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Type</th>
+                        <th>Actor</th>
+                        <th>Remarks</th>
+                        <th>Chain</th>
+                        <th>Prev ref</th>
+                        <th>Status</th>
+                        <th>Ledger hash</th>
+                        <th>Recomputed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in audit_result.events %}
+                    {% set status_class = 'badge-success' if event.status == 'MATCH' else 'badge-danger' if event.status == 'TAMPERED' else 'badge-warn' if event.status in ['MISSING_LEDGER','MISSING_OFFCHAIN'] else 'badge-purple' %}
+                    <tr>
+                        <td class="mono">{{ event.event_id }}</td>
+                        <td><span class="badge badge-neutral">{{ event.event_type }}</span></td>
+                        <td>{{ event.actor_id }}</td>
+                        <td>{{ event.remarks }}</td>
+                        <td><span class="badge {{ 'badge-success' if event.chain_status == 'OK' else 'badge-purple' if event.chain_status == 'LEGACY' else 'badge-danger' }}">{{ event.chain_status }}</span></td>
+                        <td class="mono small">{{ event.expected_prev_event_hash }}</td>
+                        <td><span class="badge {{ status_class }}">{{ event.status }}</span></td>
+                        <td class="hash-cell">
+                            <span class="mono">{{ event.ledger_hash or "—" }}</span>
+                            {% if event.ledger_hash %}
+                            <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ event.ledger_hash }}">Copy</button>
+                            {% endif %}
+                        </td>
+                        <td class="hash-cell">
+                            <span class="mono">{{ event.recomputed_hash }}</span>
+                            <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ event.recomputed_hash }}">Copy</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% if audit_result.missing_offchain %}
         <div class="alert error">
             <strong>Missing off-chain events detected:</strong>
@@ -100,19 +154,27 @@
             </ul>
         </div>
         {% endif %}
-        <div class="actions end">
-            <a class="button ghost" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Download JSON report</a>
-        </div>
     </div>
     {% endif %}
 </section>
 
-<section>
-    <h2>Audit Trends</h2>
-    <p>EIS and CVL are tracked per audit run and held in memory for this session.</p>
-    <div class="charts">
-        <canvas id="eisChart" height="120"></canvas>
-        <canvas id="cvlChart" height="120"></canvas>
+<section class="card">
+    <div class="section-title">
+        <div>
+            <h3>Audit trends</h3>
+            <p class="muted small">In-memory session history of EIS and CVL across runs.</p>
+        </div>
+        <span class="badge-neutral">Live</span>
+    </div>
+    <div class="chart-grid">
+        <div class="chart-block">
+            <p class="small muted">EIS per run</p>
+            <div class="chart-wrapper"><canvas id="eisChart" height="120"></canvas></div>
+        </div>
+        <div class="chart-block">
+            <p class="small muted">CVL per run</p>
+            <div class="chart-wrapper"><canvas id="cvlChart" height="120"></canvas></div>
+        </div>
     </div>
 </section>
 
@@ -126,12 +188,8 @@
 
         const commonOptions = {
             responsive: true,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { beginAtZero: true }
-            }
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
         };
 
         new Chart(document.getElementById("eisChart").getContext("2d"), {
@@ -141,9 +199,9 @@
                 datasets: [{
                     label: "EIS %",
                     data: eisValues,
-                    borderColor: "#1d72b8",
-                    backgroundColor: "rgba(29, 114, 184, 0.15)",
-                    tension: 0.2,
+                    borderColor: "#2563eb",
+                    backgroundColor: "rgba(37, 99, 235, 0.15)",
+                    tension: 0.25,
                     fill: true
                 }]
             },
@@ -157,7 +215,7 @@
                 datasets: [{
                     label: "CVL (ms)",
                     data: cvlValues,
-                    backgroundColor: "#2fa36e"
+                    backgroundColor: "#15803d"
                 }]
             },
             options: commonOptions

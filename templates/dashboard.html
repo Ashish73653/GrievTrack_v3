@@ -3,137 +3,140 @@
 {% block title %}Dashboard | GrievTrack{% endblock %}
 
 {% block content %}
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p>Operational view of grievances, chain integrity, officer accountability, and audit performance.</p>
+    </div>
+    <div class="quick">
+        <a class="btn btn-secondary" href="{{ url_for('submit') }}">Submit new grievance</a>
+        <a class="btn btn-primary" href="{{ url_for('audit') }}">Run verification</a>
+    </div>
+</div>
+
 <section class="stack">
-    <div class="section-header">
-        <div>
-            <h1>Dashboard</h1>
-            <p class="muted">Operational view of complaints, integrity scans, officer accountability, and audit performance.</p>
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16v12H4z"></path><path d="M9 4v12"></path><path d="M4 10h5"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="label">Complaints</p>
+                <p class="value">{{ complaint_summary.total }}</p>
+                <p class="small muted">{{ complaint_summary.open }} open · {{ complaint_summary.closed }} closed</p>
+            </div>
         </div>
-        <span class="badge-soft">Live session</span>
+        <div class="summary-card">
+            <div class="icon" aria-hidden="true" style="background:#ecfdf3;color:#15803d;box-shadow:inset 0 0 0 1px #bbf7d0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12h18"></path><path d="M3 6h18"></path><path d="M3 18h18"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="label">Integrity</p>
+                <p class="value">{{ integrity_summary.total_events }}</p>
+                <p class="small muted">{{ integrity_summary.global_eis }}% EIS · {{ integrity_summary.tampered_events }} flagged</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="icon" aria-hidden="true" style="background:#fef2f2;color:#dc2626;box-shadow:inset 0 0 0 1px #fecdd3;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2 3 7v7c0 5 4 8 9 8s9-3 9-8V7z"></path>
+                    <path d="M12 8v4"></path><circle cx="12" cy="16" r="1"></circle>
+                </svg>
+            </div>
+            <div>
+                <p class="label">Officer accountability</p>
+                <p class="value">{{ officer_summary.total_officers }}</p>
+                <p class="small muted">{{ officer_summary.delayed_count }} delayed · {{ officer_summary.avg_response_hours }}h avg response</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="icon" aria-hidden="true" style="background:#e0f2fe;color:#0b5394;box-shadow:inset 0 0 0 1px #bae6fd;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="label">Audit performance</p>
+                <p class="value">{{ audit_summary.audits_run }}</p>
+                <p class="small muted">Avg CVL {{ audit_summary.avg_cvl_ms }} ms · last {{ audit_summary.last_cvl_ms }} ms</p>
+            </div>
+        </div>
     </div>
 
-    <div class="metrics-grid">
-        <div class="metric">
-            <p class="small muted">Complaint Summary</p>
-            <div class="stat-grid">
-                <div>
-                    <div class="stat-value">{{ complaint_summary.total }}</div>
-                    <div class="stat-label">Total</div>
-                </div>
-                <div>
-                    <div class="stat-value">{{ complaint_summary.open }}</div>
-                    <div class="stat-label">Open</div>
-                </div>
-                <div>
-                    <div class="stat-value">{{ complaint_summary.closed }}</div>
-                    <div class="stat-label">Closed</div>
-                </div>
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3 class="table-title">How to demo</h3>
+                <p class="table-subtitle">Use the built-in flows to seed data, then verify the ledger chain.</p>
             </div>
+            <span class="badge">Guided</span>
         </div>
-        <div class="metric">
-            <p class="small muted">Integrity Summary</p>
-            <div class="stat-grid">
-                <div>
-                    <div class="stat-value">{{ integrity_summary.total_events }}</div>
-                    <div class="stat-label">Total events</div>
-                </div>
-                <div>
-                    <div class="stat-value">{{ integrity_summary.tampered_events }}</div>
-                    <div class="stat-label">Tampered</div>
-                </div>
-                <div>
-                    <div class="stat-value">{{ integrity_summary.global_eis }}%</div>
-                    <div class="stat-label">Global EIS</div>
-                </div>
-            </div>
-        </div>
-        <div class="metric">
-            <p class="small muted">Officer Accountability</p>
-            <div class="stat-grid">
-                <div>
-                    <div class="stat-value">{{ officer_summary.total_officers }}</div>
-                    <div class="stat-label">Total officers</div>
-                </div>
-                <div>
-                    <div class="stat-value">{{ officer_summary.delayed_count }}</div>
-                    <div class="stat-label">Delayed cases</div>
-                </div>
-                <div>
-                    <div class="stat-value">{{ officer_summary.avg_response_hours }}h</div>
-                    <div class="stat-label">Avg response</div>
-                </div>
-            </div>
-        </div>
-        <div class="metric">
-            <p class="small muted">Audit Performance</p>
-            <div class="stat-grid">
-                <div>
-                    <div class="stat-value">{{ audit_summary.audits_run }}</div>
-                    <div class="stat-label">Audits run</div>
-                </div>
-                <div>
-                    <div class="stat-value">{{ audit_summary.avg_cvl_ms }} ms</div>
-                    <div class="stat-label">Avg CVL</div>
-                </div>
-                <div>
-                    <div class="stat-value">{{ audit_summary.last_cvl_ms }} ms</div>
-                    <div class="stat-label">Last CVL</div>
-                </div>
-            </div>
-        </div>
+        <ol class="list-steps">
+            <li>Submit a new grievance from <a href="{{ url_for('submit') }}">Submit</a> to mint a complaint ID.</li>
+            <li>Log progress via <a href="{{ url_for('update') }}">Update</a> to extend the event chain.</li>
+            <li>Run <a href="{{ url_for('audit') }}">Audit</a> to verify hashes, then view the timeline.</li>
+        </ol>
     </div>
 
     <div class="grid-two">
         <div class="card">
-            <div class="card-header">
+            <div class="section-title">
                 <div>
                     <h3>Officer Accountability Index</h3>
-                    <p class="muted small">OAI = (within/assigned * 100) - 2 * delayed</p>
+                    <p class="muted small">OAI = (within/assigned × 100) − 2 × delayed</p>
                 </div>
+                <span class="badge-neutral">Per officer</span>
             </div>
             {% if officer_oai %}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Officer ID</th>
-                        <th class="numeric">Assigned</th>
-                        <th class="numeric">Within SLA</th>
-                        <th class="numeric">Delayed</th>
-                        <th class="numeric">Avg resp (h)</th>
-                        <th class="numeric">OAI score</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in officer_oai %}
-                    <tr>
-                        <td class="mono">{{ row.officer_id }}</td>
-                        <td class="numeric">{{ row.assigned_count }}</td>
-                        <td class="numeric">{{ row.within_sla_count }}</td>
-                        <td class="numeric">{{ row.delayed_count }}</td>
-                        <td class="numeric">{{ row.avg_response_hours }}</td>
-                        <td class="numeric"><span class="chip score-chip">{{ row.oai_score }}</span></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Officer ID</th>
+                            <th class="numeric">Assigned</th>
+                            <th class="numeric">Within SLA</th>
+                            <th class="numeric">Delayed</th>
+                            <th class="numeric">Avg resp (h)</th>
+                            <th class="numeric">OAI score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in officer_oai %}
+                        <tr>
+                            <td class="mono">{{ row.officer_id }}</td>
+                            <td class="numeric">{{ row.assigned_count }}</td>
+                            <td class="numeric">{{ row.within_sla_count }}</td>
+                            <td class="numeric">{{ row.delayed_count }}</td>
+                            <td class="numeric">{{ row.avg_response_hours }}</td>
+                            <td class="numeric"><span class="badge badge-neutral">{{ row.oai_score }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% else %}
-            <p class="muted small">No officer accountability data yet. Submit and update complaints to populate this table.</p>
+            <p class="muted small">No accountability data yet. Submit and update complaints to populate this table.</p>
             {% endif %}
         </div>
         <div class="card">
-            <div class="card-header">
+            <div class="section-title">
                 <div>
-                    <h3>Audit Performance</h3>
-                    <p class="muted small">EIS vs CVL for recent audit runs</p>
+                    <h3>Audit performance</h3>
+                    <p class="muted small">EIS and CVL trends for recent runs</p>
                 </div>
+                <span class="badge-neutral">Live session</span>
             </div>
-            <div class="charts">
+            <div class="chart-grid">
                 <div class="chart-block">
-                    <p class="small muted">EIS Trend</p>
+                    <p class="small muted">EIS trend</p>
                     <div class="chart-wrapper"><canvas id="eisTrend"></canvas></div>
                 </div>
                 <div class="chart-block">
-                    <p class="small muted">CVL Trend</p>
+                    <p class="small muted">CVL trend</p>
                     <div class="chart-wrapper"><canvas id="cvlTrend"></canvas></div>
                 </div>
             </div>
@@ -141,11 +144,12 @@
     </div>
 
     <div class="card">
-        <div class="card-header">
+        <div class="section-title">
             <div>
                 <h3>Within SLA vs Delayed by Officer</h3>
                 <p class="muted small">Comparative view of SLA adherence per officer</p>
             </div>
+            <span class="legend"><span class="dot" style="background:#2563eb;"></span> Within SLA · <span class="dot" style="background:#dc2626;"></span> Delayed</span>
         </div>
         <div class="chart-wrapper"><canvas id="slaByOfficer"></canvas></div>
     </div>
@@ -168,7 +172,7 @@
                     data: values,
                     tension: 0.35,
                     borderColor: color,
-                    backgroundColor: color + '1a',
+                    backgroundColor: color + '26',
                     fill: true,
                     pointRadius: 3,
                     pointBackgroundColor: color,
@@ -195,8 +199,8 @@
             data: {
                 labels,
                 datasets: [
-                    { label: 'Within SLA', data: within, backgroundColor: '#1d72b8' },
-                    { label: 'Delayed', data: delayed, backgroundColor: '#d64747' },
+                    { label: 'Within SLA', data: within, backgroundColor: '#2563eb' },
+                    { label: 'Delayed', data: delayed, backgroundColor: '#dc2626' },
                 ],
             },
             options: {
@@ -208,8 +212,8 @@
         });
     }
 
-    renderLineChart('eisTrend', chartData.eis.labels, chartData.eis.values, 'EIS', '#1d72b8');
-    renderLineChart('cvlTrend', chartData.cvl.labels, chartData.cvl.values, 'CVL (ms)', '#2fa36e');
+    renderLineChart('eisTrend', chartData.eis.labels, chartData.eis.values, 'EIS', '#2563eb');
+    renderLineChart('cvlTrend', chartData.cvl.labels, chartData.cvl.values, 'CVL (ms)', '#15803d');
     renderBarChart('slaByOfficer', chartData.sla_by_officer.labels, chartData.sla_by_officer.within, chartData.sla_by_officer.delayed);
 </script>
 {% endblock %}
