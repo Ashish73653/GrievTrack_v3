@@ -5,6 +5,50 @@
 {% block content %}
 <section>
     <h1>Submit Grievance</h1>
-    <p>Use this page to file a new grievance. Form elements will be added in later phases.</p>
+    <p>Provide the basic details below to file a new grievance.</p>
+
+    <form method="post" class="form">
+        <div class="field">
+            <label for="citizen_id">Citizen ID</label>
+            <input id="citizen_id" name="citizen_id" type="text" required>
+        </div>
+        <div class="field">
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text">
+        </div>
+        <div class="field">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="3"></textarea>
+        </div>
+        <div class="field">
+            <label for="category">Category</label>
+            <input id="category" name="category" type="text">
+        </div>
+        <div class="field">
+            <label for="priority">Priority</label>
+            <select id="priority" name="priority">
+                <option value="">Select</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+            </select>
+        </div>
+        <button type="submit">Submit</button>
+    </form>
 </section>
+
+{% if receipt %}
+<section>
+    <h2>Submission Receipt</h2>
+    <p>Your complaint has been recorded and anchored.</p>
+    <dl class="receipt">
+        <div><dt>Complaint ID</dt><dd>{{ receipt.complaint_id }}</dd></div>
+        <div><dt>Event ID</dt><dd>{{ receipt.event_id }}</dd></div>
+        <div><dt>Event Hash</dt><dd>{{ receipt.event_hash }}</dd></div>
+        <div><dt>Backend</dt><dd>{{ receipt.backend }}</dd></div>
+        <div><dt>Tx ID</dt><dd>{{ receipt.tx_id or "N/A" }}</dd></div>
+    </dl>
+    <p><a href="{{ url_for('timeline') }}">View timeline</a></p>
+</section>
+{% endif %}
 {% endblock %}
