@@ -8,6 +8,10 @@ Minimal Flask scaffold for GrievTrack.
    ```bash
    pip install -r requirements.txt
    ```
+3. Initialize the database:
+   ```bash
+   python db.py
+   ```
 
 ## Run
 ```bash
