@@ -1,0 +1,18 @@
+AnchorHash(event_id, complaint_id, event_hash, timestamp):
+    anchored_at = now()
+    tx_id = generate_tx_id()
+    store world_state[event_id] = {
+        "tx_id": tx_id,
+        "event_id": event_id,
+        "complaint_id": complaint_id,
+        "event_hash": event_hash,
+        "timestamp": timestamp,
+        "anchored_at": anchored_at,
+    }
+    return tx_id
+
+GetHash(event_id):
+    record = world_state.get(event_id)
+    if record is None:
+        return NOT_FOUND
+    return record
