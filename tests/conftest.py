@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app import app
+from app import AUDIT_HISTORY, app
 from db import get_db, init_db
 
 
@@ -23,6 +23,7 @@ def clean_db():
     log_path = ROOT / "fabric_stub" / "anchored_log.jsonl"
     if log_path.exists():
         log_path.unlink()
+    AUDIT_HISTORY.clear()
     yield
 
 

@@ -4,7 +4,155 @@
 
 {% block content %}
 <section>
-    <h1>Audit Logs</h1>
-    <p>Audit information and activity trails will be available on this page.</p>
+    <h1>Auditor</h1>
+    <p>Verify anchored complaint events, simulate tampering, and export evidence for an audit trail.</p>
+
+    <form method="post" class="form">
+        <div class="field inline">
+            <label for="complaint_id">Complaint ID</label>
+            <input id="complaint_id" name="complaint_id" type="text" value="{{ complaint_id }}" placeholder="CMP-YYYY-XXXXXX" required>
+        </div>
+        <div class="actions">
+            <button type="submit" name="action" value="verify">Verify</button>
+            <button type="submit" name="action" value="tamper" class="ghost">Simulate Tamper</button>
+        </div>
+    </form>
+
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    {% if tamper_note %}
+    <div class="alert success">{{ tamper_note }}</div>
+    {% endif %}
+
+    {% if audit_result %}
+    <div class="metrics-grid">
+        <div class="metric">
+            <p class="muted">EIS (Integrity)</p>
+            <h2>{{ audit_result.summary.eis_score }}%</h2>
+            <p class="muted small">{{ audit_result.summary.matched }}/{{ audit_result.summary.total }} matched</p>
+        </div>
+        <div class="metric">
+            <p class="muted">CVL (ms)</p>
+            <h2>{{ audit_result.summary.cvl_ms }}</h2>
+            <p class="muted small">Verification latency</p>
+        </div>
+        <div class="metric">
+            <p class="muted">OAI</p>
+            <h2>{{ audit_result.summary.oai.status }}</h2>
+            {% if audit_result.summary.oai.duration_hours %}
+            <p class="muted small">{{ audit_result.summary.oai.duration_hours }}h vs {{ audit_result.summary.oai.sla_hours }}h SLA</p>
+            {% else %}
+            <p class="muted small">Insufficient data</p>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <p class="muted">Run</p>
+            <h2>#{{ audit_result.run_id }}</h2>
+            <p class="muted small">{{ audit_result.timestamp }}</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Event Verification</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Type</th>
+                    <th>Actor</th>
+                    <th>Remarks</th>
+                    <th>Status</th>
+                    <th>Ledger Hash</th>
+                    <th>Recomputed</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in audit_result.events %}
+                <tr>
+                    <td>{{ event.event_id }}</td>
+                    <td><span class="badge">{{ event.event_type }}</span></td>
+                    <td>{{ event.actor_id }}</td>
+                    <td>{{ event.remarks }}</td>
+                    <td><span class="chip status-{{ event.status|lower }}">{{ event.status }}</span></td>
+                    <td class="mono">{{ event.ledger_hash or "—" }}</td>
+                    <td class="mono">{{ event.recomputed_hash }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if audit_result.missing_offchain %}
+        <div class="alert error">
+            <strong>Missing off-chain events detected:</strong>
+            <ul>
+                {% for missing in audit_result.missing_offchain %}
+                <li>{{ missing.event_id }} ({{ missing.timestamp }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        <div class="actions end">
+            <a class="button ghost" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Download JSON report</a>
+        </div>
+    </div>
+    {% endif %}
 </section>
+
+<section>
+    <h2>Audit Trends</h2>
+    <p>EIS and CVL are tracked per audit run and held in memory for this session.</p>
+    <div class="charts">
+        <canvas id="eisChart" height="120"></canvas>
+        <canvas id="cvlChart" height="120"></canvas>
+    </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const auditHistory = {{ audit_history | tojson | safe }};
+    if (auditHistory.length) {
+        const labels = auditHistory.map(run => `#${run.run_id}`);
+        const eisValues = auditHistory.map(run => run.summary.eis_score);
+        const cvlValues = auditHistory.map(run => run.summary.cvl_ms);
+
+        const commonOptions = {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        };
+
+        new Chart(document.getElementById("eisChart").getContext("2d"), {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: "EIS %",
+                    data: eisValues,
+                    borderColor: "#1d72b8",
+                    backgroundColor: "rgba(29, 114, 184, 0.15)",
+                    tension: 0.2,
+                    fill: true
+                }]
+            },
+            options: commonOptions
+        });
+
+        new Chart(document.getElementById("cvlChart").getContext("2d"), {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [{
+                    label: "CVL (ms)",
+                    data: cvlValues,
+                    backgroundColor: "#2fa36e"
+                }]
+            },
+            options: commonOptions
+        });
+    }
+</script>
 {% endblock %}

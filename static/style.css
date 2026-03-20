@@ -127,6 +127,36 @@ button:focus {
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
 }
 
+.button {
+    display: inline-block;
+    text-decoration: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    border: 1px solid var(--accent);
+}
+
+button.ghost,
+.button.ghost {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    box-shadow: none;
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.actions.end {
+    justify-content: flex-end;
+}
+
 .alert {
     margin-top: 16px;
     padding: 12px 14px;
@@ -214,4 +244,81 @@ button:focus {
 
 .muted {
     color: var(--muted);
+}
+
+.small {
+    font-size: 13px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.metric {
+    background: #f9fbfd;
+    border: 1px solid #e0e7ef;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.metric h2 {
+    margin: 4px 0;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.table th,
+.table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #e0e7ef;
+    text-align: left;
+    vertical-align: top;
+}
+
+.table th {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.chip {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.chip.status-match {
+    background: #e7f6ee;
+    color: #216c46;
+}
+
+.chip.status-tampered {
+    background: #fceaea;
+    color: #b23030;
+}
+
+.chip.status-missing_ledger {
+    background: #fff5db;
+    color: #8a6000;
+}
+
+.mono {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+.charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
 }
