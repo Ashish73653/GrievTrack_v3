@@ -107,14 +107,136 @@ def submit():
     return render_template("submit.html", receipt=receipt)
 
 
-@app.route("/update")
+@app.route("/update", methods=["GET", "POST"])
 def update():
-    return render_template("update.html")
+    error = None
+    update_receipt = None
+
+    if request.method == "POST":
+        complaint_id = request.form.get("complaint_id", "").strip()
+        officer_id = request.form.get("officer_id", "").strip()
+        status = request.form.get("status", "").strip().upper()
+        remarks = request.form.get("remarks", "").strip()
+        final_remarks = remarks or (f"Status set to {status}" if status else "")
+
+        if not complaint_id or not officer_id or not status:
+            error = "Complaint ID, officer ID, and status are required."
+        else:
+            event_id = None
+            timestamp = None
+            prev_hash = ""
+            with get_db() as conn:
+                cursor = conn.cursor()
+                complaint = cursor.execute(
+                    "SELECT * FROM complaints WHERE complaint_id = ?",
+                    (complaint_id,),
+                ).fetchone()
+                if not complaint:
+                    error = "Complaint not found."
+                else:
+                    previous_event = cursor.execute(
+                        """
+                        SELECT ce.event_id, lh.event_hash
+                        FROM complaint_events ce
+                        LEFT JOIN ledger_hashes lh ON lh.event_id = ce.event_id
+                        WHERE ce.complaint_id = ?
+                        ORDER BY ce.timestamp DESC, ce.rowid DESC
+                        LIMIT 1
+                        """,
+                        (complaint_id,),
+                    ).fetchone()
+                    prev_hash = (
+                        previous_event["event_hash"]
+                        if previous_event and previous_event["event_hash"]
+                        else ""
+                    )
+                    event_id = new_event_id()
+                    timestamp = now_iso()
+                    cursor.execute(
+                        """
+                        INSERT INTO complaint_events (
+                            event_id, complaint_id, event_type, actor_id, remarks, timestamp
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            event_id,
+                            complaint_id,
+                            status,
+                            officer_id,
+                            final_remarks,
+                            timestamp,
+                        ),
+                    )
+                    cursor.execute(
+                        "UPDATE complaints SET current_status = ? WHERE complaint_id = ?",
+                        (status, complaint_id),
+                    )
+                    conn.commit()
+
+            if not error and event_id and timestamp:
+                payload = canonical_event_payload(
+                    complaint_id=complaint_id,
+                    event_id=event_id,
+                    event_type=status,
+                    actor_id=officer_id,
+                    remarks=final_remarks,
+                    timestamp=timestamp,
+                    prev_event_hash=prev_hash,
+                )
+                event_hash = sha256(canonical_json(payload))
+                anchor_meta = get_ledger_backend().anchor_hash(
+                    event_id=event_id,
+                    complaint_id=complaint_id,
+                    event_hash=event_hash,
+                    timestamp=timestamp,
+                )
+                update_receipt = {
+                    "complaint_id": complaint_id,
+                    "event_id": event_id,
+                    "event_hash": event_hash,
+                    "status": status,
+                    "backend": anchor_meta.get("backend", ""),
+                    "tx_id": anchor_meta.get("tx_id", ""),
+                }
+
+    return render_template("update.html", error=error, receipt=update_receipt)
 
 
 @app.route("/timeline/")
 def timeline():
-    return render_template("timeline.html")
+    complaint_id = request.args.get("complaint_id", "").strip()
+    complaint = None
+    events = []
+    error = None
+
+    if complaint_id:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            complaint = cursor.execute(
+                "SELECT * FROM complaints WHERE complaint_id = ?",
+                (complaint_id,),
+            ).fetchone()
+            if complaint:
+                events = cursor.execute(
+                    """
+                    SELECT ce.event_id, ce.event_type, ce.actor_id, ce.remarks, ce.timestamp, lh.event_hash
+                    FROM complaint_events ce
+                    LEFT JOIN ledger_hashes lh ON lh.event_id = ce.event_id
+                    WHERE ce.complaint_id = ?
+                    ORDER BY ce.timestamp ASC, ce.rowid ASC
+                    """,
+                    (complaint_id,),
+                ).fetchall()
+            else:
+                error = "Complaint not found."
+
+    return render_template(
+        "timeline.html",
+        complaint_id=complaint_id,
+        complaint=complaint,
+        events=events,
+        error=error,
+    )
 
 
 @app.route("/audit")
