@@ -3,51 +3,96 @@
 {% block title %}Update | GrievTrack{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Update Status</h1>
-    <p>Enter an existing complaint ID to log an officer update. Each update is anchored with the previous event hash to extend the grievance timeline.</p>
+<div class="page-header">
+    <div>
+        <h1>Update status</h1>
+        <p>Extend the event chain with officer updates; hashes link to the previous anchored event.</p>
+    </div>
+    <div class="quick">
+        <a class="btn btn-ghost" href="{{ url_for('timeline') }}">Lookup timeline</a>
+    </div>
+</div>
 
-    <form method="post" class="form">
-        <div class="field">
-            <label for="complaint_id">Complaint ID</label>
-            <input id="complaint_id" name="complaint_id" type="text" required>
+<section class="card stack">
+    <div class="section-title">
+        <div>
+            <h3>Officer update</h3>
+            <p class="muted small">Status is written to complaint_events and anchored against the last ledger hash.</p>
         </div>
-        <div class="field">
-            <label for="officer_id">Officer ID</label>
-            <input id="officer_id" name="officer_id" type="text" required>
-        </div>
-        <div class="field">
-            <label for="status">New Status</label>
-            <input id="status" name="status" type="text" list="status-options" placeholder="e.g., IN_PROGRESS" required>
-            <datalist id="status-options">
-                <option value="ACKNOWLEDGED"></option>
-                <option value="IN_PROGRESS"></option>
-                <option value="RESOLVED"></option>
-                <option value="ESCALATED"></option>
-                <option value="CLOSED"></option>
-            </datalist>
-        </div>
-        <div class="field">
-            <label for="remarks">Remarks</label>
-            <textarea id="remarks" name="remarks" rows="3" placeholder="Optional context for this update"></textarea>
-        </div>
-        <button type="submit">Record update</button>
-    </form>
+        <span class="badge-neutral">Step 2 of 3</span>
+    </div>
 
     {% if error %}
     <div class="alert error">{{ error }}</div>
     {% endif %}
 
+    <form method="post" class="form">
+        <div class="form-grid">
+            <div class="field">
+                <label for="complaint_id">Complaint ID</label>
+                <input id="complaint_id" name="complaint_id" type="text" required placeholder="CMP-YYYY-XXXXXX">
+                <p class="input-note">Must match an existing anchored complaint.</p>
+            </div>
+            <div class="field">
+                <label for="officer_id">Officer ID</label>
+                <input id="officer_id" name="officer_id" type="text" required placeholder="OFF-1102">
+                <p class="input-note">Stored as actor_id in the audit trail.</p>
+            </div>
+            <div class="field">
+                <label for="status">New status</label>
+                <input id="status" name="status" type="text" list="status-options" placeholder="e.g., IN_PROGRESS" required>
+                <datalist id="status-options">
+                    <option value="ACKNOWLEDGED"></option>
+                    <option value="ASSIGNED"></option>
+                    <option value="IN_PROGRESS"></option>
+                    <option value="ESCALATED"></option>
+                    <option value="RESOLVED"></option>
+                    <option value="CLOSED"></option>
+                </datalist>
+                <p class="input-note">Uppercase value is written verbatim into the chain hash.</p>
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
+                <label for="remarks">Remarks</label>
+                <textarea id="remarks" name="remarks" rows="3" placeholder="Optional context for this update"></textarea>
+                <p class="input-note">If blank, remarks default to the status label.</p>
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Record update</button>
+            <span class="print-note">Next: audit the chain to verify integrity.</span>
+        </div>
+    </form>
+
     {% if receipt %}
-    <div class="alert success">
-        <p><strong>Update recorded.</strong> Complaint {{ receipt.complaint_id }} is now {{ receipt.status }}.</p>
+    <div class="card" style="margin:0;">
+        <div class="section-title">
+            <div>
+                <h3>Update recorded</h3>
+                <p class="muted small">Complaint {{ receipt.complaint_id }} is now {{ receipt.status }}.</p>
+            </div>
+            <span class="badge-success">Anchored</span>
+        </div>
         <dl class="receipt">
-            <div><dt>Event ID</dt><dd>{{ receipt.event_id }}</dd></div>
-            <div><dt>Event Hash</dt><dd>{{ receipt.event_hash }}</dd></div>
+            <div>
+                <dt>Complaint ID</dt>
+                <dd class="hash-cell mono">{{ receipt.complaint_id }}
+                    <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ receipt.complaint_id }}">Copy ID</button>
+                </dd>
+            </div>
+            <div><dt>Event ID</dt><dd class="mono">{{ receipt.event_id }}</dd></div>
+            <div>
+                <dt>Event hash</dt>
+                <dd class="hash-cell mono">{{ receipt.event_hash }}
+                    <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ receipt.event_hash }}">Copy hash</button>
+                </dd>
+            </div>
             <div><dt>Backend</dt><dd>{{ receipt.backend }}</dd></div>
-            <div><dt>Tx ID</dt><dd>{{ receipt.tx_id or "N/A" }}</dd></div>
+            <div><dt>Tx ID</dt><dd class="mono">{{ receipt.tx_id or "N/A" }}</dd></div>
         </dl>
-        <p><a href="{{ url_for('timeline', complaint_id=receipt.complaint_id) }}">View timeline for this complaint</a></p>
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('timeline', complaint_id=receipt.complaint_id) }}">View timeline</a>
+            <a class="btn btn-ghost" href="{{ url_for('audit') }}">Run audit</a>
+        </div>
     </div>
     {% endif %}
 </section>

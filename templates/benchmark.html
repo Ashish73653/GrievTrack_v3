@@ -3,43 +3,62 @@
 {% block title %}Benchmark | GrievTrack{% endblock %}
 
 {% block content %}
+<div class="page-header">
+    <div>
+        <h1>Benchmark</h1>
+        <p>Generate synthetic demo data, run audits, and visualize CVL vs. chain size.</p>
+    </div>
+    <div class="quick">
+        <span class="badge-neutral">Caps: N ≤ {{ max_complaints }}, M ≤ {{ max_events }}</span>
+    </div>
+</div>
+
 <section class="stack">
-    <div class="section-header">
-        <div>
-            <h1>Benchmark</h1>
-            <p class="muted">Generate synthetic complaints, run integrity audits, and visualize CVL vs total events. Inputs are capped to keep runs fast.</p>
-        </div>
-        <span class="badge-soft">Caps: N ≤ {{ max_complaints }}, M ≤ {{ max_events }}</span>
+    <div class="callout warn">
+        <strong>Heads-up:</strong> Generates synthetic demo data; use <a href="{{ url_for('reset') }}">Reset</a> after exploring. Inputs are capped to avoid runaway test runs (N ≤ {{ max_complaints }}, M ≤ {{ max_events }}).
     </div>
 
-    <form method="post" action="{{ url_for('benchmark_run') }}" class="form">
-        <div class="field inline">
-            <div class="field">
-                <label for="complaints">Complaints (N)</label>
-                <input id="complaints" type="number" name="complaints" min="1" max="{{ max_complaints }}" value="{{ (result.form_values.complaints if result else 5) }}">
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3>Configure run</h3>
+                <p class="muted small">Uses deterministic chains; each synthetic complaint is audited immediately.</p>
             </div>
-            <div class="field">
-                <label for="events_per_complaint">Events per complaint (M)</label>
-                <input id="events_per_complaint" type="number" name="events_per_complaint" min="1" max="{{ max_events }}" value="{{ (result.form_values.events_per_complaint if result else 3) }}">
+            <span class="badge-neutral">Safe demo</span>
+        </div>
+        <form method="post" action="{{ url_for('benchmark_run') }}" class="form">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="complaints">Complaints (N)</label>
+                    <input id="complaints" type="number" name="complaints" min="1" max="{{ max_complaints }}" value="{{ (result.form_values.complaints if result else 5) }}">
+                    <p class="input-note">Number of synthetic complaints to seed.</p>
+                </div>
+                <div class="field">
+                    <label for="events_per_complaint">Events per complaint (M)</label>
+                    <input id="events_per_complaint" type="number" name="events_per_complaint" min="1" max="{{ max_events }}" value="{{ (result.form_values.events_per_complaint if result else 3) }}">
+                    <p class="input-note">Each complaint receives M events chained to GENESIS.</p>
+                </div>
             </div>
-            <button type="submit">Run benchmark</button>
-        </div>
-        <p class="small muted">Synthetic data uses deterministic event chains with anchored hashes. Runs include audit verification for each complaint.</p>
-    </form>
-
-    {% if errors %}
-        <div class="alert error">
-            {% for err in errors %}<div>{{ err }}</div>{% endfor %}
-        </div>
-    {% endif %}
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">Run benchmark</button>
+                <span class="print-note">Capped automatically if inputs exceed limits.</span>
+            </div>
+        </form>
+        {% if errors %}
+            <div class="alert error" style="margin-top:12px;">
+                {% for err in errors %}<div>{{ err }}</div>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
 
     {% if result %}
     <div class="card">
-        <div class="card-header">
+        <div class="section-title">
             <div>
                 <h3>Benchmark summary</h3>
                 <p class="muted small">Requested N={{ result.requested.complaints }}, M={{ result.requested.events_per_complaint }}. Used N={{ result.used.complaints }}, M={{ result.used.events_per_complaint }}{% if result.capped.complaints or result.capped.events %} (inputs capped to avoid timeouts){% endif %}.</p>
             </div>
+            <span class="badge-neutral">Session only</span>
         </div>
         <div class="metrics-grid">
             <div class="metric">
@@ -67,7 +86,7 @@
 
     <div class="grid-two">
         <div class="card">
-            <div class="card-header">
+            <div class="section-title">
                 <div>
                     <h3>Audit runs</h3>
                     <p class="muted small">Per-complaint verification of synthetic chains</p>
@@ -76,36 +95,38 @@
             <div class="chart-wrapper"><canvas id="benchmarkChart"></canvas></div>
         </div>
         <div class="card">
-            <div class="card-header">
+            <div class="section-title">
                 <div>
                     <h3>Run details</h3>
                     <p class="muted small">Chain status, matched counts, and CVL per run</p>
                 </div>
             </div>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Complaint</th>
-                        <th class="numeric">Events</th>
-                        <th class="numeric">Matched</th>
-                        <th class="numeric">EIS</th>
-                        <th class="numeric">CVL (ms)</th>
-                        <th>Chain</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for run in result.audits %}
-                    <tr>
-                        <td class="mono">{{ run.complaint_id }}</td>
-                        <td class="numeric">{{ run.summary.total }}</td>
-                        <td class="numeric">{{ run.summary.matched }}</td>
-                        <td class="numeric">{{ run.summary.eis_score }}%</td>
-                        <td class="numeric">{{ run.summary.cvl_ms }}</td>
-                        <td><span class="chip status-{{ run.summary.chain_status|lower }}">{{ run.summary.chain_status }}</span></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Complaint</th>
+                            <th class="numeric">Events</th>
+                            <th class="numeric">Matched</th>
+                            <th class="numeric">EIS</th>
+                            <th class="numeric">CVL (ms)</th>
+                            <th>Chain</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for run in result.audits %}
+                        <tr>
+                            <td class="mono">{{ run.complaint_id }}</td>
+                            <td class="numeric">{{ run.summary.total }}</td>
+                            <td class="numeric">{{ run.summary.matched }}</td>
+                            <td class="numeric">{{ run.summary.eis_score }}%</td>
+                            <td class="numeric">{{ run.summary.cvl_ms }}</td>
+                            <td><span class="badge {{ 'badge-success' if run.summary.chain_status == 'OK' else 'badge-danger' if run.summary.chain_status == 'BROKEN' else 'badge-purple' }}">{{ run.summary.chain_status }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -122,7 +143,7 @@
                 datasets: [{
                     label: 'CVL (ms) vs total events',
                     data: runPoints.map(point => ({x: point.events, y: point.cvl, label: point.label})),
-                    backgroundColor: '#1d72b8'
+                    backgroundColor: '#2563eb'
                 }]
             },
             options: {

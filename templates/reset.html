@@ -3,15 +3,17 @@
 {% block title %}Reset | GrievTrack{% endblock %}
 
 {% block content %}
-<section class="stack">
-    <div class="section-header">
-        <div>
-            <h1>Reset</h1>
-            <p class="muted">Danger zone: clears complaints, events, ledger hashes, audit memory, and Fabric stub logs. Requires confirmation.</p>
-        </div>
-        <span class="badge-soft">Type RESET to proceed</span>
+<div class="page-header">
+    <div>
+        <h1>Reset</h1>
+        <p>Danger zone: clears complaints, events, ledger hashes, audit memory, and Fabric stub logs.</p>
     </div>
+    <div class="quick">
+        <span class="badge-danger">Irreversible</span>
+    </div>
+</div>
 
+<section class="stack">
     {% if error %}
     <div class="alert error">{{ error }}</div>
     {% endif %}
@@ -22,15 +24,36 @@
     </div>
     {% endif %}
 
-    <form method="post" class="form">
-        <div class="field">
-            <label for="confirmation">Type RESET to confirm</label>
-            <input id="confirmation" name="confirmation" placeholder="RESET" autocomplete="off">
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3>What will be cleared</h3>
+                <p class="muted small">Three-table schema only; no schemas are altered.</p>
+            </div>
+            <span class="badge-neutral">Confirm to proceed</span>
         </div>
-        <div class="actions">
-            <button type="submit">Reset system</button>
-            <a class="button ghost" href="{{ url_for('dashboard') }}">Cancel</a>
+        <ul>
+            <li>Complaints table entries</li>
+            <li>Complaint events and chained hashes</li>
+            <li>Ledger hashes and Fabric stub JSONL log</li>
+            <li>In-memory audit history</li>
+        </ul>
+        <div class="callout warn">
+            Type <strong>RESET</strong> to enable the button. This action cannot be undone.
         </div>
-    </form>
+        <form method="post" class="form">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="confirmation">Confirmation</label>
+                    <input id="confirmation" name="confirmation" placeholder="RESET" autocomplete="off">
+                    <p class="input-note">Button activates only when text matches exactly.</p>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-danger" type="submit" data-require-text="confirmation" data-required-value="RESET">Reset system</button>
+                <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Cancel</a>
+            </div>
+        </form>
+    </div>
 </section>
 {% endblock %}
