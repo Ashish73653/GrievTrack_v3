@@ -2,6 +2,7 @@ import json
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from flask import Flask, redirect, render_template, request, url_for, Response
@@ -20,6 +21,12 @@ from utils import (
 
 app = Flask(__name__)
 AUDIT_HISTORY: List[Dict] = []
+MAX_BENCHMARK_COMPLAINTS = 20
+MAX_BENCHMARK_EVENTS = 6
+
+
+def _fabric_log_path() -> Path:
+    return Path(__file__).resolve().parent / "fabric_stub" / "anchored_log.jsonl"
 
 
 def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
@@ -353,6 +360,168 @@ def _build_dashboard_data() -> Dict:
         "audit_summary": audit_summary,
         "officer_oai": officer_rows,
         "chart_data": chart_data,
+    }
+
+
+def _clear_system_state() -> Dict:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        pre_counts = {
+            "complaints": cursor.execute("SELECT COUNT(*) FROM complaints").fetchone()[0],
+            "events": cursor.execute("SELECT COUNT(*) FROM complaint_events").fetchone()[0],
+            "ledger": cursor.execute("SELECT COUNT(*) FROM ledger_hashes").fetchone()[0],
+        }
+        cursor.execute("DELETE FROM complaint_events")
+        cursor.execute("DELETE FROM complaints")
+        cursor.execute("DELETE FROM ledger_hashes")
+        conn.commit()
+
+    AUDIT_HISTORY.clear()
+    log_path = _fabric_log_path()
+    log_cleared = False
+    if log_path.exists():
+        log_path.unlink()
+        log_cleared = True
+
+    return {"pre_counts": pre_counts, "log_cleared": log_cleared}
+
+
+def _record_event(
+    complaint_id: str,
+    event_type: str,
+    actor_id: str,
+    remarks: str,
+    timestamp: Optional[str] = None,
+) -> str:
+    ts = timestamp or now_iso()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        event_id = new_event_id()
+        cursor.execute(
+            """
+            INSERT INTO complaint_events (
+                event_id, complaint_id, event_type, actor_id, remarks, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (event_id, complaint_id, event_type, actor_id, remarks, ts),
+        )
+        cursor.execute(
+            "UPDATE complaints SET current_status = ? WHERE complaint_id = ?",
+            (event_type, complaint_id),
+        )
+        conn.commit()
+
+    with get_db() as conn:
+        prev_hash = _latest_ledger_hash(conn.cursor(), complaint_id) or "GENESIS"
+    payload = canonical_event_payload(
+        complaint_id=complaint_id,
+        event_id=event_id,
+        event_type=event_type,
+        actor_id=actor_id,
+        remarks=remarks,
+        timestamp=ts,
+        prev_event_hash=prev_hash,
+    )
+    event_hash = sha256(canonical_json(payload))
+    get_ledger_backend().anchor_hash(
+        event_id=event_id,
+        complaint_id=complaint_id,
+        event_hash=event_hash,
+        timestamp=ts,
+    )
+    return event_id
+
+
+def _run_benchmark(complaint_count: int, events_per_complaint: int) -> Dict:
+    count = max(1, min(complaint_count, MAX_BENCHMARK_COMPLAINTS))
+    per_complaint = max(1, min(events_per_complaint, MAX_BENCHMARK_EVENTS))
+    status_plan = ["ASSIGNED", "IN_PROGRESS", "FOLLOW_UP", "CLOSED", "FOLLOW_UP", "CLOSED"]
+    audits: List[Dict] = []
+    priorities = ["HIGH", "MEDIUM", "LOW"]
+
+    for idx in range(count):
+        complaint_id = new_complaint_id()
+        created_at = now_iso()
+        citizen_id = f"citizen-{idx+1:02d}"
+        remarks = "Synthetic complaint submitted for benchmark"
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO complaints (
+                    complaint_id, title, description, category, priority, citizen_id,
+                    current_status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    complaint_id,
+                    f"Benchmark case {idx+1}",
+                    "Synthetic complaint for benchmark run.",
+                    "Benchmark",
+                    priorities[idx % len(priorities)],
+                    citizen_id,
+                    "SUBMIT",
+                    created_at,
+                ),
+            )
+            submit_event_id = new_event_id()
+            submit_ts = now_iso()
+            cursor.execute(
+                """
+                INSERT INTO complaint_events (
+                    event_id, complaint_id, event_type, actor_id, remarks, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    submit_event_id,
+                    complaint_id,
+                    "SUBMIT",
+                    citizen_id,
+                    remarks,
+                    submit_ts,
+                ),
+            )
+            conn.commit()
+
+        payload = canonical_event_payload(
+            complaint_id=complaint_id,
+            event_id=submit_event_id,
+            event_type="SUBMIT",
+            actor_id=citizen_id,
+            remarks=remarks,
+            timestamp=submit_ts,
+            prev_event_hash="GENESIS",
+        )
+        submit_hash = sha256(canonical_json(payload))
+        get_ledger_backend().anchor_hash(
+            event_id=submit_event_id,
+            complaint_id=complaint_id,
+            event_hash=submit_hash,
+            timestamp=submit_ts,
+        )
+
+        for step, status in enumerate(status_plan[:per_complaint]):
+            actor = f"officer-{idx+1:02d}"
+            remark = f"Benchmark {status.lower()} step {step + 1}"
+            event_id = _record_event(complaint_id, status, actor, remark)
+
+        audits.append(_verify_complaint(complaint_id, "benchmark"))
+
+    cvls = [run["summary"]["cvl_ms"] for run in audits if run.get("summary")]
+    totals = [run["summary"]["total"] for run in audits if run.get("summary")]
+    chart_points = [
+        {"label": run["complaint_id"], "events": run["summary"]["total"], "cvl": run["summary"]["cvl_ms"]}
+        for run in audits
+    ]
+
+    return {
+        "requested": {"complaints": complaint_count, "events_per_complaint": events_per_complaint},
+        "used": {"complaints": count, "events_per_complaint": per_complaint},
+        "audits": audits,
+        "total_events": sum(totals),
+        "avg_cvl_ms": round(sum(cvls) / len(cvls), 2) if cvls else 0.0,
+        "max_cvl_ms": max(cvls) if cvls else 0,
+        "chart": chart_points,
     }
 
 
@@ -729,12 +898,50 @@ def audit_report():
 
 @app.route("/benchmark")
 def benchmark():
-    return render_template("benchmark.html")
+    return redirect(url_for("benchmark_run"))
 
 
-@app.route("/reset")
+@app.route("/benchmark/run", methods=["GET", "POST"])
+def benchmark_run():
+    result = None
+    errors = []
+    if request.method == "POST":
+        requested_complaints = request.form.get("complaints", type=int) or 0
+        requested_events = request.form.get("events_per_complaint", type=int) or 0
+
+        complaints = max(1, min(requested_complaints, MAX_BENCHMARK_COMPLAINTS))
+        events_per = max(1, min(requested_events, MAX_BENCHMARK_EVENTS))
+        result = _run_benchmark(complaints, events_per)
+        result["capped"] = {
+            "complaints": requested_complaints > MAX_BENCHMARK_COMPLAINTS,
+            "events": requested_events > MAX_BENCHMARK_EVENTS,
+        }
+        result["form_values"] = {
+            "complaints": requested_complaints or complaints,
+            "events_per_complaint": requested_events or events_per,
+        }
+
+    return render_template(
+        "benchmark.html",
+        max_complaints=MAX_BENCHMARK_COMPLAINTS,
+        max_events=MAX_BENCHMARK_EVENTS,
+        result=result,
+        errors=errors,
+    )
+
+
+@app.route("/reset", methods=["GET", "POST"])
 def reset():
-    return render_template("reset.html")
+    cleared = None
+    error = None
+    if request.method == "POST":
+        confirmation = request.form.get("confirmation", "").strip().upper()
+        if confirmation != "RESET":
+            error = "Type RESET to confirm."
+        else:
+            cleared = _clear_system_state()
+
+    return render_template("reset.html", cleared=cleared, error=error)
 
 
 if __name__ == "__main__":

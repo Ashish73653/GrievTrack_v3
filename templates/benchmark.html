@@ -3,8 +3,148 @@
 {% block title %}Benchmark | GrievTrack{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Benchmark</h1>
-    <p>Performance benchmarks and comparisons will be shown here.</p>
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <h1>Benchmark</h1>
+            <p class="muted">Generate synthetic complaints, run integrity audits, and visualize CVL vs total events. Inputs are capped to keep runs fast.</p>
+        </div>
+        <span class="badge-soft">Caps: N ≤ {{ max_complaints }}, M ≤ {{ max_events }}</span>
+    </div>
+
+    <form method="post" action="{{ url_for('benchmark_run') }}" class="form">
+        <div class="field inline">
+            <div class="field">
+                <label for="complaints">Complaints (N)</label>
+                <input id="complaints" type="number" name="complaints" min="1" max="{{ max_complaints }}" value="{{ (result.form_values.complaints if result else 5) }}">
+            </div>
+            <div class="field">
+                <label for="events_per_complaint">Events per complaint (M)</label>
+                <input id="events_per_complaint" type="number" name="events_per_complaint" min="1" max="{{ max_events }}" value="{{ (result.form_values.events_per_complaint if result else 3) }}">
+            </div>
+            <button type="submit">Run benchmark</button>
+        </div>
+        <p class="small muted">Synthetic data uses deterministic event chains with anchored hashes. Runs include audit verification for each complaint.</p>
+    </form>
+
+    {% if errors %}
+        <div class="alert error">
+            {% for err in errors %}<div>{{ err }}</div>{% endfor %}
+        </div>
+    {% endif %}
+
+    {% if result %}
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h3>Benchmark summary</h3>
+                <p class="muted small">Requested N={{ result.requested.complaints }}, M={{ result.requested.events_per_complaint }}. Used N={{ result.used.complaints }}, M={{ result.used.events_per_complaint }}{% if result.capped.complaints or result.capped.events %} (inputs capped to avoid timeouts){% endif %}.</p>
+            </div>
+        </div>
+        <div class="metrics-grid">
+            <div class="metric">
+                <p class="small muted">Complaints</p>
+                <div class="stat-value">{{ result.used.complaints }}</div>
+                <div class="stat-label">Synthetic cases seeded</div>
+            </div>
+            <div class="metric">
+                <p class="small muted">Events</p>
+                <div class="stat-value">{{ result.total_events }}</div>
+                <div class="stat-label">Anchored events across all cases</div>
+            </div>
+            <div class="metric">
+                <p class="small muted">Avg CVL</p>
+                <div class="stat-value">{{ result.avg_cvl_ms }} ms</div>
+                <div class="stat-label">Verification latency</div>
+            </div>
+            <div class="metric">
+                <p class="small muted">Max CVL</p>
+                <div class="stat-value">{{ result.max_cvl_ms }} ms</div>
+                <div class="stat-label">Slowest verification</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-two">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3>Audit runs</h3>
+                    <p class="muted small">Per-complaint verification of synthetic chains</p>
+                </div>
+            </div>
+            <div class="chart-wrapper"><canvas id="benchmarkChart"></canvas></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3>Run details</h3>
+                    <p class="muted small">Chain status, matched counts, and CVL per run</p>
+                </div>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Complaint</th>
+                        <th class="numeric">Events</th>
+                        <th class="numeric">Matched</th>
+                        <th class="numeric">EIS</th>
+                        <th class="numeric">CVL (ms)</th>
+                        <th>Chain</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in result.audits %}
+                    <tr>
+                        <td class="mono">{{ run.complaint_id }}</td>
+                        <td class="numeric">{{ run.summary.total }}</td>
+                        <td class="numeric">{{ run.summary.matched }}</td>
+                        <td class="numeric">{{ run.summary.eis_score }}%</td>
+                        <td class="numeric">{{ run.summary.cvl_ms }}</td>
+                        <td><span class="chip status-{{ run.summary.chain_status|lower }}">{{ run.summary.chain_status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 </section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const runPoints = {{ (result.chart if result else []) | tojson }};
+    if (runPoints.length) {
+        const ctx = document.getElementById('benchmarkChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'CVL (ms) vs total events',
+                    data: runPoints.map(point => ({x: point.events, y: point.cvl, label: point.label})),
+                    backgroundColor: '#1d72b8'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const d = ctx.raw;
+                                return `${d.label}: ${d.x} events, ${d.y} ms CVL`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Total events (on/off chain)' }, beginAtZero: true },
+                    y: { title: { display: true, text: 'CVL (ms)' }, beginAtZero: true }
+                }
+            }
+        });
+    }
+</script>
 {% endblock %}
