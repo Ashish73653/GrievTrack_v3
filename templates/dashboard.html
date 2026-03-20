@@ -3,8 +3,213 @@
 {% block title %}Dashboard | GrievTrack{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Dashboard</h1>
-    <p>Overview of key grievance tracking metrics will appear here.</p>
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <h1>Dashboard</h1>
+            <p class="muted">Operational view of complaints, integrity scans, officer accountability, and audit performance.</p>
+        </div>
+        <span class="badge-soft">Live session</span>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric">
+            <p class="small muted">Complaint Summary</p>
+            <div class="stat-grid">
+                <div>
+                    <div class="stat-value">{{ complaint_summary.total }}</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div>
+                    <div class="stat-value">{{ complaint_summary.open }}</div>
+                    <div class="stat-label">Open</div>
+                </div>
+                <div>
+                    <div class="stat-value">{{ complaint_summary.closed }}</div>
+                    <div class="stat-label">Closed</div>
+                </div>
+            </div>
+        </div>
+        <div class="metric">
+            <p class="small muted">Integrity Summary</p>
+            <div class="stat-grid">
+                <div>
+                    <div class="stat-value">{{ integrity_summary.total_events }}</div>
+                    <div class="stat-label">Total events</div>
+                </div>
+                <div>
+                    <div class="stat-value">{{ integrity_summary.tampered_events }}</div>
+                    <div class="stat-label">Tampered</div>
+                </div>
+                <div>
+                    <div class="stat-value">{{ integrity_summary.global_eis }}%</div>
+                    <div class="stat-label">Global EIS</div>
+                </div>
+            </div>
+        </div>
+        <div class="metric">
+            <p class="small muted">Officer Accountability</p>
+            <div class="stat-grid">
+                <div>
+                    <div class="stat-value">{{ officer_summary.total_officers }}</div>
+                    <div class="stat-label">Total officers</div>
+                </div>
+                <div>
+                    <div class="stat-value">{{ officer_summary.delayed_count }}</div>
+                    <div class="stat-label">Delayed cases</div>
+                </div>
+                <div>
+                    <div class="stat-value">{{ officer_summary.avg_response_hours }}h</div>
+                    <div class="stat-label">Avg response</div>
+                </div>
+            </div>
+        </div>
+        <div class="metric">
+            <p class="small muted">Audit Performance</p>
+            <div class="stat-grid">
+                <div>
+                    <div class="stat-value">{{ audit_summary.audits_run }}</div>
+                    <div class="stat-label">Audits run</div>
+                </div>
+                <div>
+                    <div class="stat-value">{{ audit_summary.avg_cvl_ms }} ms</div>
+                    <div class="stat-label">Avg CVL</div>
+                </div>
+                <div>
+                    <div class="stat-value">{{ audit_summary.last_cvl_ms }} ms</div>
+                    <div class="stat-label">Last CVL</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-two">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3>Officer Accountability Index</h3>
+                    <p class="muted small">OAI = (within/assigned * 100) - 2 * delayed</p>
+                </div>
+            </div>
+            {% if officer_oai %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Officer ID</th>
+                        <th class="numeric">Assigned</th>
+                        <th class="numeric">Within SLA</th>
+                        <th class="numeric">Delayed</th>
+                        <th class="numeric">Avg resp (h)</th>
+                        <th class="numeric">OAI score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in officer_oai %}
+                    <tr>
+                        <td class="mono">{{ row.officer_id }}</td>
+                        <td class="numeric">{{ row.assigned_count }}</td>
+                        <td class="numeric">{{ row.within_sla_count }}</td>
+                        <td class="numeric">{{ row.delayed_count }}</td>
+                        <td class="numeric">{{ row.avg_response_hours }}</td>
+                        <td class="numeric"><span class="chip score-chip">{{ row.oai_score }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="muted small">No officer accountability data yet. Submit and update complaints to populate this table.</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3>Audit Performance</h3>
+                    <p class="muted small">EIS vs CVL for recent audit runs</p>
+                </div>
+            </div>
+            <div class="charts">
+                <div class="chart-block">
+                    <p class="small muted">EIS Trend</p>
+                    <div class="chart-wrapper"><canvas id="eisTrend"></canvas></div>
+                </div>
+                <div class="chart-block">
+                    <p class="small muted">CVL Trend</p>
+                    <div class="chart-wrapper"><canvas id="cvlTrend"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h3>Within SLA vs Delayed by Officer</h3>
+                <p class="muted small">Comparative view of SLA adherence per officer</p>
+            </div>
+        </div>
+        <div class="chart-wrapper"><canvas id="slaByOfficer"></canvas></div>
+    </div>
 </section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const chartData = {{ chart_data | tojson }};
+
+    function renderLineChart(id, labels, values, label, color) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const context = canvas.getContext('2d');
+        new Chart(context, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label,
+                    data: values,
+                    tension: 0.35,
+                    borderColor: color,
+                    backgroundColor: color + '1a',
+                    fill: true,
+                    pointRadius: 3,
+                    pointBackgroundColor: color,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } },
+                    x: { grid: { display: false } },
+                },
+            },
+        });
+    }
+
+    function renderBarChart(id, labels, within, delayed) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const context = canvas.getContext('2d');
+        new Chart(context, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Within SLA', data: within, backgroundColor: '#1d72b8' },
+                    { label: 'Delayed', data: delayed, backgroundColor: '#d64747' },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true } },
+            },
+        });
+    }
+
+    renderLineChart('eisTrend', chartData.eis.labels, chartData.eis.values, 'EIS', '#1d72b8');
+    renderLineChart('cvlTrend', chartData.cvl.labels, chartData.cvl.values, 'CVL (ms)', '#2fa36e');
+    renderBarChart('slaByOfficer', chartData.sla_by_officer.labels, chartData.sla_by_officer.within, chartData.sla_by_officer.delayed);
+</script>
 {% endblock %}
