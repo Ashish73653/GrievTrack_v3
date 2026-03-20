@@ -79,6 +79,102 @@ def _compute_oai(complaint: Dict, events: List) -> Dict:
     }
 
 
+def _latest_ledger_hash(cursor, complaint_id: str) -> Optional[str]:
+    row = cursor.execute(
+        """
+        SELECT event_hash
+        FROM ledger_hashes
+        WHERE complaint_id = ?
+        ORDER BY timestamp DESC, ledger_id DESC
+        LIMIT 1
+        """,
+        (complaint_id,),
+    ).fetchone()
+    return row["event_hash"] if row else None
+
+
+def _verify_events_against_ledger(
+    events: List[Dict], ledger_by_event: Dict[str, str], complaint_id: Optional[str] = None
+) -> Dict:
+    prev_anchor_hash: Optional[str] = None
+    matched_count = 0
+    chain_broken = False
+    event_results = []
+
+    for event in events:
+        event_dict = dict(event)
+        cid = event_dict.get("complaint_id") or complaint_id or ""
+        ledger_hash = ledger_by_event.get(event_dict["event_id"])
+        expected_prev = prev_anchor_hash or "GENESIS"
+
+        chain_payload = canonical_event_payload(
+            complaint_id=cid,
+            event_id=event_dict["event_id"],
+            event_type=event_dict["event_type"],
+            actor_id=event_dict["actor_id"],
+            remarks=event_dict["remarks"],
+            timestamp=event_dict["timestamp"],
+            prev_event_hash=expected_prev,
+        )
+        chain_hash = sha256(canonical_json(chain_payload))
+
+        legacy_payload = canonical_event_payload(
+            complaint_id=cid,
+            event_id=event_dict["event_id"],
+            event_type=event_dict["event_type"],
+            actor_id=event_dict["actor_id"],
+            remarks=event_dict["remarks"],
+            timestamp=event_dict["timestamp"],
+            prev_event_hash="",
+        )
+        legacy_hash = sha256(canonical_json(legacy_payload))
+
+        if ledger_hash is None:
+            status = "MISSING_LEDGER"
+            chain_status = "BROKEN"
+            recomputed_hash = chain_hash
+            chain_broken = True
+        elif ledger_hash == chain_hash:
+            status = "MATCH"
+            chain_status = "OK"
+            recomputed_hash = chain_hash
+            matched_count += 1
+        elif ledger_hash == legacy_hash:
+            status = "MATCH"
+            chain_status = "LEGACY"
+            recomputed_hash = legacy_hash
+            matched_count += 1
+        else:
+            status = "TAMPERED"
+            chain_status = "BROKEN"
+            recomputed_hash = chain_hash
+            chain_broken = True
+
+        if ledger_hash:
+            prev_anchor_hash = ledger_hash
+
+        event_results.append(
+            {
+                "event_id": event_dict["event_id"],
+                "event_type": event_dict["event_type"],
+                "actor_id": event_dict["actor_id"],
+                "remarks": event_dict["remarks"],
+                "timestamp": event_dict["timestamp"],
+                "ledger_hash": ledger_hash or "",
+                "recomputed_hash": recomputed_hash,
+                "status": status,
+                "chain_status": chain_status,
+                "expected_prev_event_hash": expected_prev,
+            }
+        )
+
+    return {
+        "events": event_results,
+        "matched": matched_count,
+        "chain_broken": chain_broken,
+    }
+
+
 def _build_dashboard_data() -> Dict:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -133,30 +229,14 @@ def _build_dashboard_data() -> Dict:
         missing_offchain = [eid for eid in ledger_map.keys() if eid not in event_ids]
         missing_offchain_total += len(missing_offchain)
 
-        prev_hash = ""
-        for event in complaint_events:
-            total_events += 1
-            ledger_hash = ledger_map.get(event["event_id"])
-            payload = canonical_event_payload(
-                complaint_id=cid,
-                event_id=event["event_id"],
-                event_type=event["event_type"],
-                actor_id=event["actor_id"],
-                remarks=event["remarks"],
-                timestamp=event["timestamp"],
-                prev_event_hash=prev_hash,
-            )
-            recomputed_hash = sha256(canonical_json(payload))
-            if ledger_hash:
-                prev_hash = ledger_hash
-
-            if ledger_hash is None:
-                continue
-
-            if ledger_hash == recomputed_hash:
-                matched_events += 1
-            else:
-                tampered_events += 1
+        verification = _verify_events_against_ledger(
+            complaint_events, ledger_map, complaint_id=cid
+        )
+        total_events += len(complaint_events)
+        matched_events += verification["matched"]
+        tampered_events += sum(
+            1 for event in verification["events"] if event["status"] == "TAMPERED"
+        )
 
         oai = _compute_oai(complaint_dict, complaint_events)
         if oai.get("status") == "DELAYED":
@@ -344,49 +424,17 @@ def _verify_complaint(complaint_id: str, action: str) -> Dict:
         if row["event_id"] not in event_ids
     ]
 
-    prev_hash = ""
-    matched_count = 0
-    event_results = []
-    for event in events:
-        ledger_hash = ledger_by_event.get(event["event_id"])
-        payload = canonical_event_payload(
-            complaint_id=complaint_id,
-            event_id=event["event_id"],
-            event_type=event["event_type"],
-            actor_id=event["actor_id"],
-            remarks=event["remarks"],
-            timestamp=event["timestamp"],
-            prev_event_hash=prev_hash,
-        )
-        recomputed_hash = sha256(canonical_json(payload))
-
-        if ledger_hash:
-            prev_hash = ledger_hash
-
-        if ledger_hash is None:
-            status = "MISSING_LEDGER"
-        elif ledger_hash == recomputed_hash:
-            status = "MATCH"
-            matched_count += 1
-        else:
-            status = "TAMPERED"
-
-        event_results.append(
-            {
-                "event_id": event["event_id"],
-                "event_type": event["event_type"],
-                "actor_id": event["actor_id"],
-                "remarks": event["remarks"],
-                "timestamp": event["timestamp"],
-                "ledger_hash": ledger_hash or "",
-                "recomputed_hash": recomputed_hash,
-                "status": status,
-            }
-        )
+    verification = _verify_events_against_ledger(
+        [dict(event) for event in events], ledger_by_event, complaint_id=complaint_id
+    )
+    event_results = verification["events"]
+    matched_count = verification["matched"]
+    chain_broken = verification["chain_broken"]
 
     cvl_ms = int((time.perf_counter() - start_time) * 1000)
     total_events = len(events) + len(missing_offchain)
     eis_score = round((matched_count / total_events) * 100, 2) if total_events else 0.0
+    chain_status = "BROKEN" if (chain_broken or missing_offchain) else "OK"
 
     complaint = dict(complaint_row)
     oai = _compute_oai(complaint, events)
@@ -403,6 +451,7 @@ def _verify_complaint(complaint_id: str, action: str) -> Dict:
             "eis_score": eis_score,
             "cvl_ms": cvl_ms,
             "oai": oai,
+            "chain_status": chain_status,
             "action": action,
         },
         "timestamp": now_iso(),
@@ -438,6 +487,7 @@ def submit():
         event_id = new_event_id()
         event_timestamp = now_iso()
         remarks = "Complaint submitted"
+        prev_event_hash = "GENESIS"
 
         with get_db() as conn:
             cursor = conn.cursor()
@@ -474,6 +524,7 @@ def submit():
                     event_timestamp,
                 ),
             )
+            prev_event_hash = _latest_ledger_hash(cursor, complaint_id) or "GENESIS"
             conn.commit()
 
         payload = canonical_event_payload(
@@ -483,7 +534,7 @@ def submit():
             actor_id=citizen_id,
             remarks=remarks,
             timestamp=event_timestamp,
-            prev_event_hash="",
+            prev_event_hash=prev_event_hash,
         )
         event_hash = sha256(canonical_json(payload))
         anchor_meta = get_ledger_backend().anchor_hash(
@@ -521,7 +572,7 @@ def update():
         else:
             event_id = None
             timestamp = None
-            prev_hash = ""
+            prev_hash = "GENESIS"
             with get_db() as conn:
                 cursor = conn.cursor()
                 complaint = cursor.execute(
@@ -531,22 +582,7 @@ def update():
                 if not complaint:
                     error = "Complaint not found."
                 else:
-                    previous_event = cursor.execute(
-                        """
-                        SELECT ce.event_id, lh.event_hash
-                        FROM complaint_events ce
-                        LEFT JOIN ledger_hashes lh ON lh.event_id = ce.event_id
-                        WHERE ce.complaint_id = ?
-                        ORDER BY ce.timestamp DESC, ce.rowid DESC
-                        LIMIT 1
-                        """,
-                        (complaint_id,),
-                    ).fetchone()
-                    prev_hash = (
-                        previous_event["event_hash"]
-                        if previous_event and previous_event["event_hash"]
-                        else ""
-                    )
+                    prev_hash = _latest_ledger_hash(cursor, complaint_id) or "GENESIS"
                     event_id = new_event_id()
                     timestamp = now_iso()
                     cursor.execute(

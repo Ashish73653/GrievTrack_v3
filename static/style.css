@@ -305,9 +305,24 @@ button.ghost,
     color: #b23030;
 }
 
+.chip.status-broken {
+    background: #fceaea;
+    color: #b23030;
+}
+
 .chip.status-missing_ledger {
     background: #fff5db;
     color: #8a6000;
+}
+
+.chip.status-ok {
+    background: #e7f6ee;
+    color: #216c46;
+}
+
+.chip.status-legacy {
+    background: #eef2ff;
+    color: #3f51b5;
 }
 
 .mono {

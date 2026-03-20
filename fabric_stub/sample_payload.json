@@ -6,7 +6,7 @@
     "actor_id": "officer-42",
     "remarks": "Updated status to In Review",
     "timestamp": "2024-02-02T12:00:00+00:00",
-    "prev_event_hash": ""
+    "prev_event_hash": "GENESIS"
   },
   "event_hash": "<sha256_of_canonical_json>"
 }

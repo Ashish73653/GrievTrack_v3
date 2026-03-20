@@ -44,7 +44,7 @@ def test_submit_creates_records_and_receipt(client):
             actor_id=event["actor_id"],
             remarks=event["remarks"],
             timestamp=event["timestamp"],
-            prev_event_hash="",
+            prev_event_hash="GENESIS",
         )
         expected_hash = sha256(canonical_json(payload))
 
