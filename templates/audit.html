@@ -38,6 +38,11 @@
             <p class="muted small">Verification latency</p>
         </div>
         <div class="metric">
+            <p class="muted">Chain Status</p>
+            <h2>{{ audit_result.summary.chain_status }}</h2>
+            <p class="muted small">Prev-hash continuity</p>
+        </div>
+        <div class="metric">
             <p class="muted">OAI</p>
             <h2>{{ audit_result.summary.oai.status }}</h2>
             {% if audit_result.summary.oai.duration_hours %}
@@ -62,6 +67,8 @@
                     <th>Type</th>
                     <th>Actor</th>
                     <th>Remarks</th>
+                    <th>Chain</th>
+                    <th>Prev Ref</th>
                     <th>Status</th>
                     <th>Ledger Hash</th>
                     <th>Recomputed</th>
@@ -74,6 +81,8 @@
                     <td><span class="badge">{{ event.event_type }}</span></td>
                     <td>{{ event.actor_id }}</td>
                     <td>{{ event.remarks }}</td>
+                    <td><span class="chip status-{{ event.chain_status|lower }}">{{ event.chain_status }}</span></td>
+                    <td class="mono small">{{ event.expected_prev_event_hash }}</td>
                     <td><span class="chip status-{{ event.status|lower }}">{{ event.status }}</span></td>
                     <td class="mono">{{ event.ledger_hash or "—" }}</td>
                     <td class="mono">{{ event.recomputed_hash }}</td>
