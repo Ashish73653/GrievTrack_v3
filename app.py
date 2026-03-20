@@ -1,5 +1,6 @@
 import json
 import time
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
@@ -75,6 +76,203 @@ def _compute_oai(complaint: Dict, events: List) -> Dict:
         "transition_at": transition_at,
         "duration_hours": round(duration.total_seconds() / 3600, 2),
         "sla_hours": sla_hours,
+    }
+
+
+def _build_dashboard_data() -> Dict:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        complaints = cursor.execute("SELECT * FROM complaints").fetchall()
+        events = cursor.execute(
+            """
+            SELECT complaint_id, event_id, event_type, actor_id, remarks, timestamp
+            FROM complaint_events
+            ORDER BY complaint_id ASC, timestamp ASC, rowid ASC
+            """
+        ).fetchall()
+        ledger_rows = cursor.execute(
+            """
+            SELECT complaint_id, event_id, event_hash, timestamp
+            FROM ledger_hashes
+            """
+        ).fetchall()
+
+    events_by_complaint: Dict[str, List[Dict]] = defaultdict(list)
+    for event in events:
+        events_by_complaint[event["complaint_id"]].append(dict(event))
+
+    ledger_by_complaint: Dict[str, Dict[str, str]] = defaultdict(dict)
+    for row in ledger_rows:
+        ledger_by_complaint[row["complaint_id"]][row["event_id"]] = row["event_hash"]
+
+    total_complaints = len(complaints)
+    closed_statuses = {"CLOSED", "RESOLVED"}
+    closed_count = sum(
+        1
+        for complaint in complaints
+        if (complaint["current_status"] or "").upper() in closed_statuses
+    )
+    open_count = total_complaints - closed_count
+
+    tampered_events = 0
+    matched_events = 0
+    total_events = 0
+    missing_offchain_total = 0
+    delayed_complaints = 0
+    response_hours_total = 0.0
+    response_samples = 0
+    officer_stats: Dict[str, Dict] = {}
+
+    for complaint in complaints:
+        complaint_dict = dict(complaint)
+        cid = complaint_dict["complaint_id"]
+        complaint_events = events_by_complaint.get(cid, [])
+        ledger_map = ledger_by_complaint.get(cid, {})
+
+        event_ids = {event["event_id"] for event in complaint_events}
+        missing_offchain = [eid for eid in ledger_map.keys() if eid not in event_ids]
+        missing_offchain_total += len(missing_offchain)
+
+        prev_hash = ""
+        for event in complaint_events:
+            total_events += 1
+            ledger_hash = ledger_map.get(event["event_id"])
+            payload = canonical_event_payload(
+                complaint_id=cid,
+                event_id=event["event_id"],
+                event_type=event["event_type"],
+                actor_id=event["actor_id"],
+                remarks=event["remarks"],
+                timestamp=event["timestamp"],
+                prev_event_hash=prev_hash,
+            )
+            recomputed_hash = sha256(canonical_json(payload))
+            if ledger_hash:
+                prev_hash = ledger_hash
+
+            if ledger_hash is None:
+                continue
+
+            if ledger_hash == recomputed_hash:
+                matched_events += 1
+            else:
+                tampered_events += 1
+
+        oai = _compute_oai(complaint_dict, complaint_events)
+        if oai.get("status") == "DELAYED":
+            delayed_complaints += 1
+        if oai.get("status") in {"WITHIN_SLA", "DELAYED"} and "duration_hours" in oai:
+            response_hours_total += oai["duration_hours"]
+            response_samples += 1
+
+        officer_id = None
+        for event in complaint_events:
+            if event["event_type"] == "ASSIGNED" and event["actor_id"]:
+                officer_id = event["actor_id"]
+                break
+        if not officer_id:
+            for event in complaint_events:
+                if event["event_type"] != "SUBMIT" and event["actor_id"]:
+                    officer_id = event["actor_id"]
+                    break
+
+        if officer_id:
+            stats = officer_stats.setdefault(
+                officer_id,
+                {
+                    "assigned_count": 0,
+                    "within_sla_count": 0,
+                    "delayed_count": 0,
+                    "total_hours": 0.0,
+                    "duration_samples": 0,
+                },
+            )
+            stats["assigned_count"] += 1
+            if oai.get("status") == "WITHIN_SLA":
+                stats["within_sla_count"] += 1
+            if oai.get("status") == "DELAYED":
+                stats["delayed_count"] += 1
+            if oai.get("status") in {"WITHIN_SLA", "DELAYED"} and "duration_hours" in oai:
+                stats["total_hours"] += oai["duration_hours"]
+                stats["duration_samples"] += 1
+
+    integrity_events = total_events + missing_offchain_total
+    global_eis = (
+        round((matched_events / integrity_events) * 100, 2) if integrity_events else 0.0
+    )
+
+    officer_rows = []
+    for officer_id, stats in sorted(officer_stats.items()):
+        avg_hours = (
+            round(stats["total_hours"] / stats["duration_samples"], 2)
+            if stats["duration_samples"]
+            else 0.0
+        )
+        oai_score = (
+            round((stats["within_sla_count"] / stats["assigned_count"]) * 100, 2)
+            - (2 * stats["delayed_count"])
+            if stats["assigned_count"]
+            else 0.0
+        )
+        officer_rows.append(
+            {
+                "officer_id": officer_id,
+                "assigned_count": stats["assigned_count"],
+                "within_sla_count": stats["within_sla_count"],
+                "delayed_count": stats["delayed_count"],
+                "avg_response_hours": avg_hours,
+                "oai_score": round(oai_score, 2),
+            }
+        )
+
+    cvl_values = [
+        run.get("summary", {}).get("cvl_ms", 0) for run in AUDIT_HISTORY if run.get("summary")
+    ]
+    audit_summary = {
+        "audits_run": len(AUDIT_HISTORY),
+        "avg_cvl_ms": round(sum(cvl_values) / len(cvl_values), 2) if cvl_values else 0.0,
+        "last_cvl_ms": cvl_values[-1] if cvl_values else 0.0,
+    }
+
+    chart_data = {
+        "eis": {
+            "labels": [f"Run {run['run_id']}" for run in AUDIT_HISTORY],
+            "values": [run.get("summary", {}).get("eis_score", 0.0) for run in AUDIT_HISTORY],
+        },
+        "cvl": {
+            "labels": [f"Run {run['run_id']}" for run in AUDIT_HISTORY],
+            "values": [run.get("summary", {}).get("cvl_ms", 0.0) for run in AUDIT_HISTORY],
+        },
+        "sla_by_officer": {
+            "labels": [row["officer_id"] for row in officer_rows],
+            "within": [row["within_sla_count"] for row in officer_rows],
+            "delayed": [row["delayed_count"] for row in officer_rows],
+        },
+    }
+
+    return {
+        "complaint_summary": {
+            "total": total_complaints,
+            "open": open_count,
+            "closed": closed_count,
+        },
+        "integrity_summary": {
+            "total_events": integrity_events,
+            "tampered_events": tampered_events,
+            "global_eis": global_eis,
+        },
+        "officer_summary": {
+            "total_officers": len(officer_stats),
+            "delayed_count": delayed_complaints,
+            "avg_response_hours": round(
+                response_hours_total / response_samples, 2
+            )
+            if response_samples
+            else 0.0,
+        },
+        "audit_summary": audit_summary,
+        "officer_oai": officer_rows,
+        "chart_data": chart_data,
     }
 
 
@@ -220,7 +418,8 @@ def index():
 
 @app.route("/dashboard")
 def dashboard():
-    return render_template("dashboard.html")
+    dashboard_data = _build_dashboard_data()
+    return render_template("dashboard.html", **dashboard_data)
 
 
 @app.route("/submit", methods=["GET", "POST"])

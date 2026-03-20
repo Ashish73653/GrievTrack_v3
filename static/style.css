@@ -322,3 +322,80 @@ button.ghost,
     gap: 16px;
     margin-top: 12px;
 }
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.badge-soft {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #e8f3fc;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 8px;
+}
+
+.stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.stat-label {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.grid-two {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.chart-block {
+    background: #f9fbfd;
+    border: 1px solid #e0e7ef;
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.chart-wrapper {
+    position: relative;
+    min-height: 200px;
+}
+
+.numeric {
+    text-align: right;
+}
+
+.score-chip {
+    background: #e8f3fc;
+    color: #1d72b8;
+}
