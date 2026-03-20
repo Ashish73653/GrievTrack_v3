@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "complaint_id": "CMP-2024-EXAMPLE",
+    "event_id": "EVT-ABCD1234",
+    "event_type": "STATUS_UPDATE",
+    "actor_id": "officer-42",
+    "remarks": "Updated status to In Review",
+    "timestamp": "2024-02-02T12:00:00+00:00",
+    "prev_event_hash": ""
+  },
+  "event_hash": "<sha256_of_canonical_json>"
+}
