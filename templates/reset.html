@@ -3,8 +3,34 @@
 {% block title %}Reset | GrievTrack{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Reset</h1>
-    <p>Administrative reset tools will be implemented on this page.</p>
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <h1>Reset</h1>
+            <p class="muted">Danger zone: clears complaints, events, ledger hashes, audit memory, and Fabric stub logs. Requires confirmation.</p>
+        </div>
+        <span class="badge-soft">Type RESET to proceed</span>
+    </div>
+
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    {% if cleared %}
+    <div class="alert success">
+        <div>Database cleared: complaints={{ cleared.pre_counts.complaints }}, events={{ cleared.pre_counts.events }}, ledger={{ cleared.pre_counts.ledger }} removed.</div>
+        <div>Audit history cleared. Fabric stub log {% if cleared.log_cleared %}deleted{% else %}not present{% endif %}.</div>
+    </div>
+    {% endif %}
+
+    <form method="post" class="form">
+        <div class="field">
+            <label for="confirmation">Type RESET to confirm</label>
+            <input id="confirmation" name="confirmation" placeholder="RESET" autocomplete="off">
+        </div>
+        <div class="actions">
+            <button type="submit">Reset system</button>
+            <a class="button ghost" href="{{ url_for('dashboard') }}">Cancel</a>
+        </div>
+    </form>
 </section>
 {% endblock %}
