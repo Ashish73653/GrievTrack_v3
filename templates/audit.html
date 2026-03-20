@@ -127,16 +127,16 @@
                         <td>{{ event.actor_id }}</td>
                         <td>{{ event.remarks }}</td>
                         <td><span class="badge {{ 'badge-success' if event.chain_status == 'OK' else 'badge-purple' if event.chain_status == 'LEGACY' else 'badge-danger' }}">{{ event.chain_status }}</span></td>
-                        <td class="mono small">{{ event.expected_prev_event_hash }}</td>
+                        <td class="mono small hash" title="{{ event.expected_prev_event_hash }}">{{ event.expected_prev_event_hash }}</td>
                         <td><span class="badge {{ status_class }}">{{ event.status }}</span></td>
                         <td class="hash-cell">
-                            <span class="mono">{{ event.ledger_hash or "—" }}</span>
+                            <span class="mono hash" title="{{ event.ledger_hash }}">{{ event.ledger_hash or "—" }}</span>
                             {% if event.ledger_hash %}
                             <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ event.ledger_hash }}">Copy</button>
                             {% endif %}
                         </td>
                         <td class="hash-cell">
-                            <span class="mono">{{ event.recomputed_hash }}</span>
+                            <span class="mono hash" title="{{ event.recomputed_hash }}">{{ event.recomputed_hash }}</span>
                             <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ event.recomputed_hash }}">Copy</button>
                         </td>
                     </tr>
@@ -166,14 +166,14 @@
         </div>
         <span class="badge-neutral">Live</span>
     </div>
-    <div class="chart-grid">
+    <div class="charts-grid">
         <div class="chart-block">
             <p class="small muted">EIS per run</p>
-            <div class="chart-wrapper"><canvas id="eisChart" height="120"></canvas></div>
+            <div class="chart-box"><canvas id="eisChart"></canvas></div>
         </div>
         <div class="chart-block">
             <p class="small muted">CVL per run</p>
-            <div class="chart-wrapper"><canvas id="cvlChart" height="120"></canvas></div>
+            <div class="chart-box"><canvas id="cvlChart"></canvas></div>
         </div>
     </div>
 </section>
