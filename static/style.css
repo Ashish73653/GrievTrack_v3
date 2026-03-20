@@ -75,3 +75,143 @@ section {
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field.inline {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+label {
+    font-weight: 600;
+    color: var(--text);
+}
+
+input,
+select,
+textarea {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d6dce5;
+    font: inherit;
+}
+
+button {
+    width: fit-content;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+button:hover,
+button:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.alert {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border-left: 4px solid var(--accent);
+    background: #e8f3fc;
+}
+
+.alert.error {
+    border-color: #d64747;
+    background: #fceaea;
+}
+
+.alert.success {
+    border-color: #2fa36e;
+    background: #e7f6ee;
+}
+
+.receipt {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px 12px;
+    margin: 12px 0;
+}
+
+.receipt dt {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.receipt dd {
+    margin: 0;
+    color: var(--muted);
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid #e0e7ef;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 16px 0;
+}
+
+.timeline {
+    list-style: none;
+    padding-left: 0;
+    margin: 16px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.timeline-event {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #e0e7ef;
+    background: #f9fbfd;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.timeline .meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.hash {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.muted {
+    color: var(--muted);
+}
