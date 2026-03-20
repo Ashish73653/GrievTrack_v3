@@ -18,6 +18,13 @@
     box-sizing: border-box;
 }
 
+html,
+body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
 body {
     margin: 0;
     background: var(--bg);
@@ -25,6 +32,13 @@ body {
     font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+}
+
+img,
+canvas {
+    max-width: 100%;
+    height: auto;
+    display: block;
 }
 
 a {
@@ -37,10 +51,23 @@ a:focus {
     text-decoration: underline;
 }
 
-.shell {
-    max-width: 1180px;
+.container {
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 20px 24px 48px;
+    padding: 24px 16px;
+    width: 100%;
+}
+
+.shell {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 16px 48px;
+    width: 100%;
+}
+
+main {
+    width: 100%;
+    min-width: 0;
 }
 
 .topbar {
@@ -84,8 +111,16 @@ a:focus {
 .nav {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .nav-link {
@@ -126,6 +161,8 @@ a:focus {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    width: 100%;
+    min-width: 0;
 }
 
 .page-header {
@@ -159,6 +196,15 @@ a:focus {
     border-radius: 16px;
     padding: 18px 20px;
     box-shadow: var(--shadow);
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.stat-value,
+.subtitle {
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .stack {
@@ -301,32 +347,45 @@ a:focus {
 
 .hash {
     color: var(--muted);
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    vertical-align: bottom;
 }
 
 .mono {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-size: 12px;
-    word-break: break-all;
 }
 
 .table-wrap {
     width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: 12px;
     margin-top: 12px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
 }
 
 .table {
     width: 100%;
-    min-width: 720px;
     border-collapse: collapse;
 }
 
-.table th,
-.table td {
-    padding: 11px 10px;
+td,
+th {
+    padding: 11px 12px;
     border-bottom: 1px solid var(--border);
     text-align: left;
     vertical-align: top;
+    white-space: nowrap;
 }
 
 .table th {
@@ -348,6 +407,20 @@ a:focus {
 .numeric {
     text-align: right;
     white-space: nowrap;
+}
+
+.grid,
+.grid-two {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.charts-grid,
+.chart-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
 .summary-grid {
@@ -406,12 +479,13 @@ a:focus {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    width: 100%;
 }
 
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px 18px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px 16px;
 }
 
 .field {
@@ -434,6 +508,8 @@ textarea {
     font: inherit;
     background: #fff;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    width: 100%;
+    max-width: 100%;
 }
 
 input:focus,
@@ -442,6 +518,11 @@ textarea:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
 }
 
 .input-note {
@@ -578,22 +659,32 @@ textarea:focus {
     font-size: 13px;
 }
 
-.chart-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 16px;
+.chart-card {
+    padding: 16px;
 }
 
 .chart-block {
     background: #f8fafc;
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 14px;
+    padding: 16px;
+    min-width: 0;
 }
 
+.chart-box,
 .chart-wrapper {
     position: relative;
-    min-height: 220px;
+    width: 100%;
+    height: 320px;
+    overflow: hidden;
+}
+
+.chart-box canvas,
+.chart-wrapper canvas {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .metric-strip {
@@ -646,6 +737,7 @@ textarea:focus {
     display: grid;
     gap: 6px;
     align-items: center;
+    min-width: 0;
 }
 
 .print-note {
@@ -687,11 +779,8 @@ textarea:focus {
     .nav {
         justify-content: flex-start;
     }
-    .shell {
-        padding: 16px;
-    }
-    .table {
-        min-width: 640px;
+    .container {
+        padding: 20px 12px;
     }
 }
 
@@ -706,6 +795,7 @@ textarea:focus {
     .print-hide {
         display: none !important;
     }
+    .container,
     .shell {
         max-width: none;
         padding: 12px;
