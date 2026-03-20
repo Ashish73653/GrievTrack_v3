@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.db
+.pytest_cache/
+.coverage
+htmlcov/
+fabric_stub/anchored_log.jsonl
