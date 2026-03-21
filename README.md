@@ -32,6 +32,16 @@ export GRIEVTRACK_LEDGER_BACKEND=fabric_stub  # default is sqlite
 - Reproducibility: use **Reset** (type `RESET`) to clear complaints, events, ledger anchors, audit memory, and `fabric_stub/anchored_log.jsonl`. Benchmark via **Benchmark** to compare CVL under controlled N/M limits (caps: N ≤ 20, M ≤ 6).
 - Docs quick links: [Demo script](docs/DEMO_SCRIPT.md), [Talk track](docs/THESIS_TALK_TRACK.md), [Architecture](docs/ARCHITECTURE.md), [Threat model](docs/THREAT_MODEL.md), [Metrics](docs/METRICS.md), [Screenshots checklist](docs/screenshots/README.md).
 
+## Getting good graphs quickly
+- Use **Seed demo data** (`/seed`) to append a curated dataset: 10 complaints across Infrastructure/Sanitation/Water/Safety/Electricity, officers OFF001–OFF005, realistic SLA timings (within + delayed), plus a tampered event and one missing-ledger follow-up so integrity charts are not flat.
+- The dashboard shows a prompt when empty—click **Seed demo data** to light up charts and tables immediately. Demo badge appears while seeded data is present (citizen IDs prefixed `demo-`).
+- Reset wipes everything: complaints, complaint_events, ledger_hashes, in-memory histories (audit/research/benchmark), and the Fabric stub log at `fabric_stub/anchored_log.jsonl`.
+
+### Teacher-ready demo scenarios
+- **Scenario A (seeded pulse):** Seed → Dashboard → Audit one seeded complaint to highlight mixed integrity (tamper + missing-ledger visible in Integrity Breakdown and Audit table).
+- **Scenario B (hands-on tamper):** Pick any complaint → Timeline to review chain → Audit verify → use **Simulate tamper/Attacks** → re-verify to show EIS drop, chain BROKEN, and hash mismatches.
+- **Scenario C (performance note):** Run **Benchmark** with a small N/M → show CVL trend and capped synthetic anchors; relate back to Dashboard audit tiles.
+
 ## UI walkthrough scenarios (what to click + what to say)
 Script these three in order; they line up with the dashboard, audit, and research visuals.
 

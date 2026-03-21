@@ -20,7 +20,7 @@
     {% if cleared %}
     <div class="alert success">
         <div>Database cleared: complaints={{ cleared.pre_counts.complaints }}, events={{ cleared.pre_counts.events }}, ledger={{ cleared.pre_counts.ledger }} removed.</div>
-        <div>Audit history cleared. Fabric stub log {% if cleared.log_cleared %}deleted{% else %}not present{% endif %}.</div>
+        <div>In-memory runs cleared (audit, research, benchmark). Fabric stub log {% if cleared.log_cleared %}deleted{% else %}not present{% endif %}.</div>
     </div>
     {% endif %}
 
@@ -33,10 +33,10 @@
             <span class="badge-neutral">Confirm to proceed</span>
         </div>
         <ul>
-            <li>Complaints table entries</li>
-            <li>Complaint events and chained hashes</li>
-            <li>Ledger hashes and Fabric stub JSONL log</li>
-            <li>In-memory audit history</li>
+            <li>Complaints and complaint events (including seeded demo data)</li>
+            <li>Ledger hashes and chained anchors</li>
+            <li>Fabric stub JSONL log at <code>fabric_stub/anchored_log.jsonl</code></li>
+            <li>In-memory histories (audit, research, benchmark)</li>
         </ul>
         <div class="callout warn">
             Type <strong>RESET</strong> to enable the button. This action cannot be undone.

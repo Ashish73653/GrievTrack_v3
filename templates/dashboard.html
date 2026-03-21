@@ -11,8 +11,21 @@
     <div class="quick">
         <a class="btn btn-secondary" href="{{ url_for('submit') }}">Submit new grievance</a>
         <a class="btn btn-primary" href="{{ url_for('audit') }}">Run verification</a>
+        {% if demo_seeded %}
+        <span class="badge">Demo dataset loaded</span>
+        {% endif %}
     </div>
 </div>
+
+{% if not has_data %}
+<div class="callout warn">
+    <div><strong>No data yet.</strong> Seed the curated demo dataset to light up the charts.</div>
+    <div class="actions">
+        <a class="btn btn-primary" href="{{ url_for('seed') }}">Seed demo dataset</a>
+        <a class="btn btn-ghost" href="{{ url_for('submit') }}">Submit manually</a>
+    </div>
+</div>
+{% endif %}
 
 <section class="stack">
     <div class="summary-grid">
@@ -88,6 +101,7 @@
             <span class="badge">Guided</span>
         </div>
         <ol class="list-steps">
+            <li>Load a rich dataset instantly via <a href="{{ url_for('seed') }}">Seed</a> to fill charts and tables.</li>
             <li>Submit a new grievance from <a href="{{ url_for('submit') }}">Submit</a> to mint a complaint ID.</li>
             <li>Log progress via <a href="{{ url_for('update') }}">Update</a> to extend the event chain.</li>
             <li>Run <a href="{{ url_for('audit') }}">Audit</a> to verify hashes, then view the timeline.</li>
@@ -99,8 +113,14 @@
             <div>
                 <h3>Research analytics</h3>
                 <p class="muted small">Paper-style visuals for panel walkthroughs: integrity, accountability, latency, and priority impact.</p>
+                <p class="chart-note">{{ chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" }}</p>
             </div>
-            <span class="badge-neutral">Session snapshot</span>
+            <div class="actions">
+                <span class="badge-neutral">Session snapshot</span>
+                {% if demo_seeded %}
+                <span class="badge badge-neutral">Demo dataset loaded</span>
+                {% endif %}
+            </div>
         </div>
         <div class="charts-grid research-grid">
             <div class="chart-block">
@@ -170,6 +190,7 @@
                 </div>
                 <span class="badge-neutral">Live session</span>
             </div>
+            <p class="chart-note">{{ chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" }}</p>
             <div class="charts-grid">
                 <div class="chart-block">
                     <p class="small muted">EIS trend</p>
@@ -192,6 +213,7 @@
                 </div>
                 <span class="badge-neutral">Live</span>
             </div>
+            <p class="chart-note">{{ chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" }}</p>
             <div class="chart-box"><canvas id="trtByPriority"></canvas></div>
         </div>
         <div class="card">
@@ -202,18 +224,20 @@
                 </div>
                 <span class="badge-neutral">Session</span>
             </div>
+            <p class="chart-note">{{ chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" }}</p>
             <div class="chart-box"><canvas id="integrityBreakdown"></canvas></div>
         </div>
     </div>
 
     <div class="card">
-        <div class="section-title">
-            <div>
-                <h3>Within SLA vs Delayed by Officer</h3>
-                <p class="muted small">Comparative view of SLA adherence per officer</p>
+            <div class="section-title">
+                <div>
+                    <h3>Within SLA vs Delayed by Officer</h3>
+                    <p class="muted small">Comparative view of SLA adherence per officer</p>
+                </div>
+                <span class="legend"><span class="dot" style="background:#2563eb;"></span> Within SLA · <span class="dot" style="background:#dc2626;"></span> Delayed</span>
             </div>
-            <span class="legend"><span class="dot" style="background:#2563eb;"></span> Within SLA · <span class="dot" style="background:#dc2626;"></span> Delayed</span>
-        </div>
+        <p class="chart-note">{{ chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" }}{% if demo_seeded %} · Demo dataset loaded{% endif %}</p>
         <div class="chart-box"><canvas id="slaByOfficer"></canvas></div>
     </div>
 </section>
@@ -223,6 +247,15 @@
     const chartData = {{ chart_data | tojson }};
     const mustard = '#c49000';
     const slate = '#111827';
+    const gridColor = '#e5e7eb';
+    const chartMeta = chartData.meta || {};
+
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
+    Chart.defaults.plugins.legend.position = 'bottom';
+    Chart.defaults.color = '#0f172a';
+    Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+    Chart.defaults.borderColor = '#e5e7eb';
 
     function renderLineChart(id, labels, values, label, color) {
         const canvas = document.getElementById(id);
@@ -248,8 +281,8 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0 } },
-                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridColor } },
+                    x: { grid: { color: gridColor } },
                 },
             },
         });
@@ -282,10 +315,10 @@
                 scales: {
                     y: {
                         type: 'logarithmic',
-                        grid: { color: '#e5e7eb' },
+                        grid: { color: gridColor },
                         ticks: { callback: (value) => Number(value).toString() },
                     },
-                    x: { grid: { color: '#e5e7eb' } },
+                    x: { grid: { color: gridColor } },
                 },
             },
         });
@@ -308,7 +341,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom' } },
-                scales: { y: { beginAtZero: true } },
+                scales: { y: { beginAtZero: true, grid: { color: gridColor } }, x: { grid: { color: gridColor } } },
             },
         });
     }
@@ -332,7 +365,7 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    y: { beginAtZero: true, grid: { color: gridColor } },
                     x: { grid: { display: false } },
                 },
             },
@@ -357,7 +390,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } },
+                scales: { y: { beginAtZero: true, grid: { color: gridColor } }, x: { grid: { color: gridColor } } },
             },
         });
     }
