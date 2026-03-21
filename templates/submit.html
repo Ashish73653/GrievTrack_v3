@@ -3,95 +3,108 @@
 {% block title %}Submit | GrievTrack{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>Submit grievance</h1>
-        <p>Record a citizen grievance and anchor the initial event hash on-chain.</p>
-    </div>
-    <div class="quick">
-        <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Back to dashboard</a>
-    </div>
-</div>
-
-<section class="card">
-    <div class="section-title">
+<section class="stack-24">
+    <div class="page-header">
         <div>
-            <h3>Grievance details</h3>
-            <p class="muted small">Fields align to the three-table schema; no extra data is required.</p>
-        </div>
-        <span class="badge-neutral">Step 1 of 3</span>
-    </div>
-    <form method="post" class="form" id="submit-form">
-        <div class="form-grid">
-            <div class="field">
-                <label for="citizen_id">Citizen ID</label>
-                <input id="citizen_id" name="citizen_id" type="text" required placeholder="e.g., CIT-4821">
-                <p class="input-note">Used to link follow-up events back to the same citizen.</p>
-            </div>
-            <div class="field">
-                <label for="title">Title</label>
-                <input id="title" name="title" type="text" placeholder="Short headline for the grievance" required>
-                <p class="input-note">Required for audit demos; keep it brief.</p>
-            </div>
-            <div class="field">
-                <label for="category">Category</label>
-                <input id="category" name="category" type="text" placeholder="Road, Water, Safety, etc." required>
-                <p class="input-note">Free-form taxonomy; no additional lookup tables are used.</p>
-            </div>
-            <div class="field">
-                <label for="priority">Priority</label>
-                <select id="priority" name="priority" required>
-                    <option value="">Select</option>
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                </select>
-                <p class="input-note">Sets SLA expectation for the Officer Accountability Index.</p>
-            </div>
-            <div class="field" style="grid-column: 1 / -1;">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" rows="3" placeholder="Describe the issue and location" required></textarea>
-                <p class="input-note">Stored off-chain; hashes use canonical payloads to anchor integrity.</p>
+            <p class="meta">Workflow · Step 1</p>
+            <h1 class="page-title">Submit grievance</h1>
+            <p class="lead">Record a citizen grievance and anchor the initial event hash on-chain.</p>
+            <div class="pill-row">
+                <span class="badge-chip">Anchors genesis event</span>
+                <span class="badge-chip">Receipt contains canonical hash</span>
             </div>
         </div>
         <div class="actions">
-            <button class="btn btn-primary" type="submit">Submit grievance</button>
-            <button class="btn btn-ghost" type="button" data-fill-demo data-target="submit-form">Use sample demo values</button>
-            <span class="print-note">Hashes and IDs appear in the receipt after submission.</span>
+            <a class="btn btn-secondary" href="{{ url_for('dashboard') }}">Back to dashboard</a>
         </div>
-    </form>
-</section>
+    </div>
 
-{% if receipt %}
-<section class="card">
-    <div class="section-title">
-        <div>
-            <h3>Submission Receipt</h3>
-            <p class="muted small">Complaint is anchored with canonical hash and ledger metadata.</p>
-        </div>
-        <span class="badge-success">Anchored</span>
+    <div class="stepper">
+        <span class="step active">1 · Submit</span>
+        <span class="step">2 · Update</span>
+        <span class="step">3 · Verify / Timeline</span>
     </div>
-    <dl class="receipt">
-        <div>
-            <dt>Complaint ID</dt>
-            <dd class="hash-cell mono">{{ receipt.complaint_id }}
-                <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ receipt.complaint_id }}">Copy ID</button>
-            </dd>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h3 class="card-title">Grievance details</h3>
+                <p class="muted">Fields align to the three-table schema; no extra data is required.</p>
+            </div>
+            <span class="badge badge-primary">Step 1 of 3</span>
         </div>
-        <div><dt>Event ID</dt><dd class="mono">{{ receipt.event_id }}</dd></div>
-        <div>
-            <dt>Event hash</dt>
-            <dd class="hash-cell mono">{{ receipt.event_hash }}
-                <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ receipt.event_hash }}">Copy hash</button>
-            </dd>
+        <form method="post" class="form" id="submit-form">
+            <div class="form-grid wide">
+                <div class="field">
+                    <label for="citizen_id">Citizen ID</label>
+                    <input class="input" id="citizen_id" name="citizen_id" type="text" required placeholder="e.g., CIT-4821">
+                    <p class="input-note">Used to link follow-up events back to the same citizen.</p>
+                </div>
+                <div class="field">
+                    <label for="title">Title</label>
+                    <input class="input" id="title" name="title" type="text" placeholder="Short headline for the grievance" required>
+                    <p class="input-note">Required for audit demos; keep it brief.</p>
+                </div>
+                <div class="field">
+                    <label for="category">Category</label>
+                    <input class="input" id="category" name="category" type="text" placeholder="Road, Water, Safety, etc." required>
+                    <p class="input-note">Free-form taxonomy; no additional lookup tables are used.</p>
+                </div>
+                <div class="field">
+                    <label for="priority">Priority</label>
+                    <select class="select" id="priority" name="priority" required>
+                        <option value="">Select</option>
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                    </select>
+                    <p class="input-note">Sets SLA expectation for the Officer Accountability Index.</p>
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <label for="description">Description</label>
+                    <textarea class="textarea" id="description" name="description" rows="3" placeholder="Describe the issue and location" required></textarea>
+                    <p class="input-note">Stored off-chain; hashes use canonical payloads to anchor integrity.</p>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">Submit grievance</button>
+                <button class="btn btn-outline" type="button" data-fill-demo data-target="submit-form">Use sample demo values</button>
+                <span class="print-note">Receipt + anchored hash shown after submission.</span>
+            </div>
+        </form>
+    </section>
+
+    {% if receipt %}
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h3 class="card-title">Submission Receipt</h3>
+                <p class="muted">Complaint anchored with canonical hash and ledger metadata.</p>
+            </div>
+            <span class="badge-success badge">Anchored</span>
         </div>
-        <div><dt>Backend</dt><dd>{{ receipt.backend }}</dd></div>
-        <div><dt>Tx ID</dt><dd class="mono">{{ receipt.tx_id or "N/A" }}</dd></div>
-    </dl>
-    <div class="actions">
-        <a class="btn btn-secondary" href="{{ url_for('timeline', complaint_id=receipt.complaint_id) }}">View timeline</a>
-        <a class="btn btn-ghost" href="{{ url_for('update') }}">Log an update</a>
-    </div>
+        <dl class="receipt">
+            <div>
+                <dt>Complaint ID</dt>
+                <dd class="hash-cell mono">{{ receipt.complaint_id }}
+                    <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ receipt.complaint_id }}">Copy ID</button>
+                </dd>
+            </div>
+            <div><dt>Event ID</dt><dd class="mono">{{ receipt.event_id }}</dd></div>
+            <div>
+                <dt>Event hash</dt>
+                <dd class="hash-cell mono">{{ receipt.event_hash }}
+                    <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ receipt.event_hash }}">Copy hash</button>
+                </dd>
+            </div>
+            <div><dt>Backend</dt><dd>{{ receipt.backend }}</dd></div>
+            <div><dt>Tx ID</dt><dd class="mono">{{ receipt.tx_id or "N/A" }}</dd></div>
+        </dl>
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('timeline', complaint_id=receipt.complaint_id) }}">View timeline</a>
+            <a class="btn btn-outline" href="{{ url_for('update') }}">Log an update</a>
+        </div>
+    </section>
+    {% endif %}
 </section>
-{% endif %}
 {% endblock %}

@@ -1,10 +1,10 @@
 {% macro chart_caption(title, description, formula, bullets) -%}
-<div class="chart-caption">
-    {% if title %}<p class="caption-title">{{ title }}</p>{% endif %}
-    {% if description %}<p class="caption-body">{{ description }}</p>{% endif %}
-    {% if formula %}<p class="caption-formula"><strong>Metric:</strong> {{ formula }}</p>{% endif %}
+<div class="insight">
+    {% if title %}<h4>{{ title }}</h4>{% endif %}
+    {% if description %}<p>{{ description }}</p>{% endif %}
+    {% if formula %}<p><strong>Metric:</strong> {{ formula }}</p>{% endif %}
     {% if bullets %}
-    <ul class="caption-list">
+    <ul>
         {% for bullet in bullets %}
         <li>{{ bullet }}</li>
         {% endfor %}

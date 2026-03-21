@@ -10,44 +10,42 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <header class="topbar">
-        <div class="container topbar__inner">
-            <div class="brand">
-                <a class="brand__title" href="{{ url_for('dashboard') }}">
-                    <span class="dot"></span>
-                    GrievTrack
-                </a>
-                <p class="brand__subtitle">Ledger-anchored grievance lab</p>
-            </div>
+    <header class="app-nav">
+        <div class="container nav-inner">
+            <a class="brand" href="{{ url_for('dashboard') }}">
+                <div class="brand-mark">GT</div>
+                <div class="brand-text">
+                    <span class="brand-title">GrievTrack</span>
+                    <span class="brand-subtitle">Ledger-anchored grievance lab</span>
+                </div>
+            </a>
             <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" data-nav-toggle>
                 <span></span><span></span><span></span>
             </button>
-            <nav class="nav" data-nav>
-                <div class="nav-links" role="navigation">
-                    <a class="nav-link {% if request.endpoint in ['dashboard'] %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
-                    <a class="nav-link {% if request.endpoint in ['submit'] %}active{% endif %}" href="{{ url_for('submit') }}">Submit</a>
-                    <a class="nav-link {% if request.endpoint in ['update'] %}active{% endif %}" href="{{ url_for('update') }}">Update</a>
-                    <a class="nav-link {% if request.endpoint in ['timeline'] %}active{% endif %}" href="{{ url_for('timeline') }}">Timeline</a>
-                    <a class="nav-link {% if request.endpoint in ['audit'] %}active{% endif %}" href="{{ url_for('audit') }}">Audit</a>
-                    <a class="nav-link {% if request.endpoint in ['research'] %}active{% endif %}" href="{{ url_for('research') }}">Simulation Lab</a>
-                    <a class="nav-link {% if request.endpoint in ['attacks'] %}active{% endif %}" href="{{ url_for('attacks') }}">Attacks</a>
-                    <a class="nav-link {% if request.endpoint in ['benchmark_run'] %}active{% endif %}" href="{{ url_for('benchmark_run') }}">Benchmark</a>
-                    <a class="nav-link {% if request.endpoint in ['reset'] %}active{% endif %}" href="{{ url_for('reset') }}">Reset</a>
+            <div class="nav-links" role="navigation" data-nav>
+                <a class="nav-link {% if request.endpoint in ['dashboard'] %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a class="nav-link {% if request.endpoint in ['submit'] %}active{% endif %}" href="{{ url_for('submit') }}">Submit</a>
+                <a class="nav-link {% if request.endpoint in ['update'] %}active{% endif %}" href="{{ url_for('update') }}">Update</a>
+                <a class="nav-link {% if request.endpoint in ['timeline'] %}active{% endif %}" href="{{ url_for('timeline') }}">Timeline</a>
+                <a class="nav-link {% if request.endpoint in ['audit'] %}active{% endif %}" href="{{ url_for('audit') }}">Audit</a>
+                <a class="nav-link {% if request.endpoint in ['research'] %}active{% endif %}" href="{{ url_for('research') }}">Simulation Lab</a>
+                <a class="nav-link {% if request.endpoint in ['attacks'] %}active{% endif %}" href="{{ url_for('attacks') }}">Attacks</a>
+                <a class="nav-link {% if request.endpoint in ['benchmark_run'] %}active{% endif %}" href="{{ url_for('benchmark_run') }}">Benchmark</a>
+                <a class="nav-link {% if request.endpoint in ['reset'] %}active{% endif %}" href="{{ url_for('reset') }}">Reset</a>
+            </div>
+            <div class="nav-actions print-hide">
+                <button class="btn btn-ghost btn-sm actions-trigger" type="button" aria-expanded="false" data-actions-toggle>
+                    Actions ▾
+                </button>
+                <div class="dropdown" data-actions-menu>
+                    <a href="{{ url_for('seed') }}">Seed data</a>
+                    <a href="{{ url_for('submit') }}">New grievance</a>
+                    <a href="{{ url_for('audit') }}">Launch audit</a>
                 </div>
-                <div class="nav-actions print-hide">
-                    <button class="btn btn-ghost btn-xs actions-trigger" type="button" aria-expanded="false" data-actions-toggle>
-                        Actions ▾
-                    </button>
-                    <div class="actions-menu" data-actions-menu>
-                        <a href="{{ url_for('seed') }}">Seed data</a>
-                        <a href="{{ url_for('submit') }}">New grievance</a>
-                        <a href="{{ url_for('audit') }}">Launch audit</a>
-                    </div>
-                </div>
-            </nav>
+            </div>
         </div>
     </header>
-    <main class="container content">
+    <main class="container page-shell">
         {% block content %}{% endblock %}
     </main>
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
