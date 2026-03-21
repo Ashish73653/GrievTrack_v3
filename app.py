@@ -459,6 +459,13 @@ def _build_dashboard_data() -> Dict:
         "values": list(integrity_breakdown.values()),
     }
     chart_data["oai_histogram"] = _bucket_oai_scores(officer_oai_scores)
+    chart_data["integrity_breakdown"] = (
+        chart_data.get("integrity_breakdown")
+        or {"labels": [], "values": []}
+    )
+    chart_data["oai_histogram"] = chart_data.get("oai_histogram") or {"labels": [], "values": []}
+    chart_data["trt_by_priority"] = chart_data.get("trt_by_priority") or {"labels": [], "values": []}
+    chart_data["cvl"] = chart_data.get("cvl") or {"labels": [], "values": []}
     chart_data["research"] = {
         "integrity_breakdown": chart_data["integrity_breakdown"],
         "oai_histogram": chart_data["oai_histogram"],

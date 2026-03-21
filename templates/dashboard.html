@@ -5,13 +5,23 @@
 {% block title %}Dashboard | GrievTrack{% endblock %}
 
 {% block content %}
+{% set chart_data = chart_data|default({}, true) %}
 {% set snapshot_label = chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" %}
-{% set last_audit_label = chart_data.cvl.labels|default([])|last %}
-{% set research = chart_data.research or {} %}
-{% set has_research_integrity = research.integrity_breakdown.values|default([])|length > 0 %}
-{% set has_research_oai = research.oai_histogram.values|default([])|length > 0 %}
-{% set has_research_trt = research.trt_by_priority.values|default([])|length > 0 %}
-{% set has_research_cvl = research.cvl_history.values|default([])|length > 0 %}
+{% set cvl_chart = chart_data.cvl|default({}, true) %}
+{% set last_audit_label = cvl_chart.get('labels', [])|last %}
+{% set research = chart_data.research|default({}, true) %}
+{% set integrity_breakdown = research.integrity_breakdown|default({}, true) %}
+{% set oai_histogram = research.oai_histogram|default({}, true) %}
+{% set trt_research = research.trt_by_priority|default({}, true) %}
+{% set cvl_history = research.cvl_history|default({}, true) %}
+{% set has_research_integrity = integrity_breakdown|length > 0 %}
+{% set has_research_oai = oai_histogram.get('values', [])|length > 0 %}
+{% set has_research_trt = trt_research.get('values', [])|length > 0 %}
+{% set has_research_cvl = cvl_history.get('values', [])|length > 0 %}
+{% set eis_chart = chart_data.eis|default({}, true) %}
+{% set integrity_chart = chart_data.integrity_breakdown|default({}, true) %}
+{% set trt_chart = chart_data.trt_by_priority|default({}, true) %}
+{% set sla_chart = chart_data.sla_by_officer|default({}, true) %}
 <section class="stack-24">
     <div class="page-header">
         <div>
@@ -271,7 +281,7 @@
             <div class="charts-grid">
                 <div>
                     <p class="muted">EIS trend</p>
-                    {% if chart_data.eis.values|default([])|length %}
+                    {% if eis_chart.get('values', [])|length %}
                     <div class="chart-box"><canvas id="eisTrend"></canvas></div>
                     {% else %}
                     <div class="empty">No audit runs yet.</div>
@@ -279,7 +289,7 @@
                 </div>
                 <div>
                     <p class="muted">CVL trend</p>
-                    {% if chart_data.cvl.values|default([])|length %}
+                    {% if cvl_chart.get('values', [])|length %}
                     <div class="chart-box"><canvas id="cvlTrend"></canvas></div>
                     {% else %}
                     <div class="empty">No audit runs yet.</div>
@@ -309,7 +319,7 @@
                 <span class="badge-neutral">Live</span>
             </div>
             <p class="chart-note">{{ snapshot_label }}</p>
-            {% if chart_data.trt_by_priority.values|default([])|length %}
+            {% if trt_chart.get('values', [])|length %}
             <div class="chart-box"><canvas id="trtByPriority"></canvas></div>
             {% else %}
             <div class="empty">No resolution data yet.</div>
@@ -334,7 +344,7 @@
                 <span class="badge-neutral">Session</span>
             </div>
             <p class="chart-note">{{ snapshot_label }}</p>
-            {% if chart_data.integrity_breakdown.values|default([])|length %}
+            {% if integrity_chart.get('values', [])|length %}
             <div class="chart-box"><canvas id="integrityBreakdown"></canvas></div>
             {% else %}
             <div class="empty">No audit runs yet.</div>
@@ -361,7 +371,7 @@
             <span class="badge-neutral">Live</span>
         </div>
         <p class="chart-note">{{ snapshot_label }}{% if demo_seeded %} · Demo dataset loaded{% endif %}</p>
-        {% if chart_data.sla_by_officer.labels|default([])|length %}
+        {% if sla_chart.get('labels', [])|length %}
         <div class="chart-box"><canvas id="slaByOfficer"></canvas></div>
         {% else %}
         <div class="empty">No accountability data yet.</div>
