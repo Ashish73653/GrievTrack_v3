@@ -29,30 +29,30 @@
             <h1 class="page-title">Dashboard</h1>
             <p class="lead">Command view for grievances, chain integrity, accountability, and audit performance.</p>
             <div class="pill-row">
-                <span class="badge-chip">Session snapshot</span>
+                <span class="badge badge-neutral">Session snapshot</span>
                 {% if last_audit_label %}
                 <span class="badge badge-neutral">Last audit {{ last_audit_label }}</span>
                 {% endif %}
-                <span class="badge-chip">Audits run {{ audit_summary.audits_run }}</span>
+                {% if demo_seeded %}
+                <span class="badge badge-primary">Demo dataset loaded</span>
+                {% endif %}
+                <span class="badge-chip">Anchored hashes on every event</span>
             </div>
         </div>
         <div class="pill-row">
-            {% if demo_seeded %}
-            <span class="badge badge-primary">Demo dataset loaded</span>
-            {% endif %}
+            <span class="badge-chip">3-table model</span>
+            <span class="badge-chip">Ledger comparisons live</span>
             <span class="badge-chip">{{ snapshot_label }}</span>
         </div>
     </div>
 
     <div class="action-bar">
-        <a class="btn btn-primary" href="{{ url_for('submit') }}">Submit new grievance</a>
-        <a class="btn btn-secondary" href="{{ url_for('audit') }}">Run verification</a>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('submit') }}">Submit new grievance</a>
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('audit') }}">Run verification</a>
         <span class="badge-chip">Receipt + anchored hash after submission</span>
         <div class="spacer"></div>
-        {% if demo_seeded %}
-        <span class="badge badge-primary">Demo dataset loaded</span>
-        {% else %}
-        <a class="btn btn-outline btn-sm" href="{{ url_for('seed') }}">Load demo dataset</a>
+        {% if not demo_seeded %}
+        <a class="btn btn-outline btn-xs" href="{{ url_for('seed') }}">Load demo dataset</a>
         {% endif %}
     </div>
 
@@ -112,46 +112,11 @@
     <section class="card">
         <div class="card-header">
             <div>
-                <h3 class="card-title">How to demo</h3>
-                <p class="muted">Use built-in flows to seed data, anchor hashes, and review the chain.</p>
-            </div>
-            <span class="badge badge-primary">Guided</span>
-        </div>
-        <div class="stack-16">
-            <div class="stat-blocks">
-                <div class="stat-block">
-                    <h4>1. Seed</h4>
-                    <p>Load curated dataset via <a href="{{ url_for('seed') }}">Seed</a> for instant charts.</p>
-                </div>
-                <div class="stat-block">
-                    <h4>2. Submit</h4>
-                    <p>Mint a complaint ID from <a href="{{ url_for('submit') }}">Submit</a>; receipt shows anchored hash.</p>
-                </div>
-                <div class="stat-block">
-                    <h4>3. Update</h4>
-                    <p>Append status events via <a href="{{ url_for('update') }}">Update</a>; hashes chain automatically.</p>
-                </div>
-                <div class="stat-block">
-                    <h4>4. Audit</h4>
-                    <p>Run <a href="{{ url_for('audit') }}">Audit</a> to verify ledger anchors, then review Timeline.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="card">
-        <div class="card-header">
-            <div>
                 <h3 class="card-title">Research analytics</h3>
                 <p class="muted">Paper-style visuals for integrity, accountability, latency, and priority impact.</p>
                 <p class="chart-note">{{ snapshot_label }}</p>
             </div>
-            <div class="pill-row">
-                <span class="badge-neutral">Session snapshot</span>
-                {% if demo_seeded %}
-                <span class="badge badge-primary">Demo dataset loaded</span>
-                {% endif %}
-            </div>
+            <span class="badge badge-neutral">Session snapshot</span>
         </div>
         <div class="charts-grid">
             <div class="card">
@@ -186,27 +151,9 @@
                     [
                         "Tall bars on the right mean officers close cases within SLA.",
                         "Low or negative scores come from repeated delays—priorities with stricter SLAs drop faster.",
-                        "Use this to pick an officer to audit when you see heavy left-tail density."
-                    ]
-                ) }}
-            </div>
-            <div class="card">
-                <p class="muted">TRT by priority</p>
-                {% if has_research_trt %}
-                <div class="chart-box short"><canvas id="trtByPriorityResearch"></canvas></div>
-                {% else %}
-                <div class="empty">No resolution data yet.</div>
-                {% endif %}
-                {{ ui.chart_caption(
-                    "What this graph tells",
-                    "Average time-to-resolution grouped by complaint priority in this snapshot.",
-                    "TRT = closed_timestamp − submit_timestamp (hours)",
-                    [
-                        "High priority should stay far lower than low/medium; spikes signal SLA risk.",
-                        "Rising bars mean backlog or slow closures—check officer assignments.",
-                        "Compare to OAI: delayed officers often drive high TRT for high priority."
-                    ]
-                ) }}
+                    "Use this to pick an officer to audit when you see heavy left-tail density."
+                ]
+            ) }}
             </div>
             <div class="card">
                 <p class="muted">CVL history</p>
@@ -228,6 +175,106 @@
             </div>
         </div>
     </section>
+
+    <details class="more-analytics">
+        <summary>More analytics (TRT, SLA, integrity deep-dive)</summary>
+        <div class="grid">
+            <div class="card">
+                <p class="muted">TRT by priority (research)</p>
+                {% if has_research_trt %}
+                <div class="chart-box short"><canvas id="trtByPriorityResearch"></canvas></div>
+                {% else %}
+                <div class="empty">No resolution data yet.</div>
+                {% endif %}
+                {{ ui.chart_caption(
+                    "What this graph tells",
+                    "Average time-to-resolution grouped by complaint priority in this snapshot.",
+                    "TRT = closed_timestamp − submit_timestamp (hours)",
+                    [
+                        "High priority should stay far lower than low/medium; spikes signal SLA risk.",
+                        "Rising bars mean backlog or slow closures—check officer assignments.",
+                        "Compare to OAI: delayed officers often drive high TRT for high priority."
+                    ]
+                ) }}
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Avg Time to Resolution by Priority</h3>
+                        <p class="muted">TRT = CLOSED timestamp minus SUBMIT timestamp</p>
+                    </div>
+                    <span class="badge-neutral">Live</span>
+                </div>
+                <p class="chart-note">{{ snapshot_label }}</p>
+                {% if trt_chart.get('values', [])|length %}
+                <div class="chart-box"><canvas id="trtByPriority"></canvas></div>
+                {% else %}
+                <div class="empty">No resolution data yet.</div>
+                {% endif %}
+                {{ ui.chart_caption(
+                    "What this graph tells",
+                    "Average time-to-resolution for live complaints grouped by priority.",
+                    "TRT = closed_timestamp − submit_timestamp (hours)",
+                    [
+                        "High-priority cases should close fastest—watch for any bar creeping above 24h.",
+                        "Medium should stay within roughly a week; low priority can be longer but not exploding.",
+                        "Spikes indicate backlog or stalled officers; use Audit or Timeline to see why."
+                    ]
+                ) }}
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Global Integrity Breakdown</h3>
+                        <p class="muted">MATCH vs TAMPERED vs ledger gaps</p>
+                    </div>
+                    <span class="badge-neutral">Session</span>
+                </div>
+                <p class="chart-note">{{ snapshot_label }}</p>
+                {% if integrity_chart.get('values', [])|length %}
+                <div class="chart-box"><canvas id="integrityBreakdown"></canvas></div>
+                {% else %}
+                <div class="empty">No audit runs yet.</div>
+                {% endif %}
+                {{ ui.chart_caption(
+                    "What this graph tells",
+                    "Live breakdown of verified vs tampered vs missing links across all complaints in the database.",
+                    "EIS = matched_events / (ledger_events + offchain_events) × 100",
+                    [
+                        "Mustard dominance means hashes recompute cleanly; red means hash mismatches were found.",
+                        "Amber slices mean missing ledger anchors or off-chain events—usually from delete/insert anomalies.",
+                        "EIS dropping below ~95% warrants an Audit on the highlighted complaints."
+                    ]
+                ) }}
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Within SLA vs Delayed by Officer</h3>
+                        <p class="muted">Comparative view of SLA adherence per officer</p>
+                    </div>
+                    <span class="badge-neutral">Live</span>
+                </div>
+                <p class="chart-note">{{ snapshot_label }}{% if demo_seeded %} · Demo dataset loaded{% endif %}</p>
+                {% if sla_chart.get('labels', [])|length %}
+                <div class="chart-box"><canvas id="slaByOfficer"></canvas></div>
+                {% else %}
+                <div class="empty">No accountability data yet.</div>
+                {% endif %}
+                {{ ui.chart_caption(
+                    "What this graph tells",
+                    "Counts of events handled within SLA versus delayed for each officer; a quick way to spot accountability gaps.",
+                    "Within SLA / Delayed counts feed OAI = (within_sla / assigned × 100) − 2 × delayed",
+                    [
+                        "Blue bars should dominate; tall red bars mean that officer is accumulating SLA violations.",
+                        "Use this to choose which officer/complaint to audit or coach next.",
+                        "If both bars are low, the officer may have few assignments—cross-check OAI distribution."
+                    ]
+                ) }}
+            </div>
+        </div>
+        <p class="chart-note">Open Simulation Lab / Research for full sandbox scenarios and more charts.</p>
+    </details>
 
     <div class="grid">
         <div class="card">
@@ -309,86 +356,7 @@
         </div>
     </div>
 
-    <div class="grid">
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <h3 class="card-title">Avg Time to Resolution by Priority</h3>
-                    <p class="muted">TRT = CLOSED timestamp minus SUBMIT timestamp</p>
-                </div>
-                <span class="badge-neutral">Live</span>
-            </div>
-            <p class="chart-note">{{ snapshot_label }}</p>
-            {% if trt_chart.get('values', [])|length %}
-            <div class="chart-box"><canvas id="trtByPriority"></canvas></div>
-            {% else %}
-            <div class="empty">No resolution data yet.</div>
-            {% endif %}
-            {{ ui.chart_caption(
-                "What this graph tells",
-                "Average time-to-resolution for live complaints grouped by priority.",
-                "TRT = closed_timestamp − submit_timestamp (hours)",
-                [
-                    "High-priority cases should close fastest—watch for any bar creeping above 24h.",
-                    "Medium should stay within roughly a week; low priority can be longer but not exploding.",
-                    "Spikes indicate backlog or stalled officers; use Audit or Timeline to see why."
-                ]
-            ) }}
-        </div>
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <h3 class="card-title">Global Integrity Breakdown</h3>
-                    <p class="muted">MATCH vs TAMPERED vs ledger gaps</p>
-                </div>
-                <span class="badge-neutral">Session</span>
-            </div>
-            <p class="chart-note">{{ snapshot_label }}</p>
-            {% if integrity_chart.get('values', [])|length %}
-            <div class="chart-box"><canvas id="integrityBreakdown"></canvas></div>
-            {% else %}
-            <div class="empty">No audit runs yet.</div>
-            {% endif %}
-            {{ ui.chart_caption(
-                "What this graph tells",
-                "Live breakdown of verified vs tampered vs missing links across all complaints in the database.",
-                "EIS = matched_events / (ledger_events + offchain_events) × 100",
-                [
-                    "Mustard dominance means hashes recompute cleanly; red means hash mismatches were found.",
-                    "Amber slices mean missing ledger anchors or off-chain events—usually from delete/insert anomalies.",
-                    "EIS dropping below ~95% warrants an Audit on the highlighted complaints."
-                ]
-            ) }}
-        </div>
-    </div>
-
-    <section class="card">
-        <div class="card-header">
-            <div>
-                <h3 class="card-title">Within SLA vs Delayed by Officer</h3>
-                <p class="muted">Comparative view of SLA adherence per officer</p>
-            </div>
-            <span class="badge-neutral">Live</span>
-        </div>
-        <p class="chart-note">{{ snapshot_label }}{% if demo_seeded %} · Demo dataset loaded{% endif %}</p>
-        {% if sla_chart.get('labels', [])|length %}
-        <div class="chart-box"><canvas id="slaByOfficer"></canvas></div>
-        {% else %}
-        <div class="empty">No accountability data yet.</div>
-        {% endif %}
-        {{ ui.chart_caption(
-            "What this graph tells",
-            "Counts of events handled within SLA versus delayed for each officer; a quick way to spot accountability gaps.",
-            "Within SLA / Delayed counts feed OAI = (within_sla / assigned × 100) − 2 × delayed",
-            [
-                "Blue bars should dominate; tall red bars mean that officer is accumulating SLA violations.",
-                "Use this to choose which officer/complaint to audit or coach next.",
-                "If both bars are low, the officer may have few assignments—cross-check OAI distribution."
-            ]
-        ) }}
     </section>
-</section>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const chartData = {{ chart_data | tojson }};

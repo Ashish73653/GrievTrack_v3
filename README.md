@@ -10,6 +10,53 @@ Citizen grievance intake with chained hashes, tamper-evident audits, dashboard a
 - Fabric-stub ledger backend (swap-in design; `fabric_stub/anchored_log.jsonl`)
 - Benchmark mode to compare CVL under synthetic load
 
+## Teacher Demo Script (10–12 minutes)
+
+Scenario A — Quick Start (Professional overview)
+1) Navbar → Dashboard → Actions ▾ → **Seed demo data**.  
+   - What you will see: toast/redirect confirmation, dashboard badge shows “Demo dataset loaded”, charts fill in with seeded values (≈10 complaints, EIS ~100%, CVL in low hundreds ms).  
+   - What to explain: deterministic seed, idempotent; curated tamper + missing-ledger examples light up integrity and OAI charts instantly.  
+2) Stay on **Dashboard**.  
+   - What you will see: KPI cards (complaints, integrity events, OAI, audit performance, TRT), integrity pie, OAI histogram, CVL history.  
+   - What to explain: “These are computed live from our 3-table model and anchored ledger hashes; the dashboard recomputes from DB + ledger on every load.”  
+
+Scenario B — End-to-End workflow (Citizen → Officer → Traceability)
+1) Navbar → **Submit** → click “Submit new grievance” (use sample values or Seeded IDs).  
+   - What you will see: receipt panel with `complaint_id`, `event_hash`, and backend/`tx_id`.  
+   - What to explain: “This is the anchored cryptographic receipt; prev_hash = GENESIS for the first event.”  
+2) Navbar → **Update** → add `ASSIGNED`, then `IN_PROGRESS`, then `CLOSED`.  
+   - What you will see: status confirmations; hashes chain to the previous ledger hash.  
+   - What to explain: “Every update appends a new canonical JSON event and anchors the chained hash.”  
+3) Navbar → **Timeline** → paste the `complaint_id` → **Load timeline**.  
+   - What you will see: ordered event history with hashes and status badges.  
+   - What to explain: “Traceability—every event is ordered, hashed, and anchored; gaps would show as missing anchors.”  
+
+Scenario C — Audit + Attack proof (Integrity drop)
+1) Navbar → **Audit** → paste the same `complaint_id` → **Verify**.  
+   - What you will see: EIS near 100%, CVL near prior run, chain status OK/LEGACY.  
+   - What to explain: “Audit recomputes canonical JSON hashes and compares them to ledger anchors.”  
+2) Click **Simulate Tamper** (or Navbar → More ▾ → **Attacks**) and run one attack.  
+   - What you will see: ledger/off-chain mismatch banners, table rows marked TAMPERED/MISSING.  
+   - What to explain: “We intentionally break one link; anchored vs recomputed hashes now diverge.”  
+3) Click **Verify** again.  
+   - What you will see: EIS drops, chain status BROKEN, missing-ledger/off-chain badges.  
+   - What to explain: “Mismatch appears immediately; integrity score quantifies damage. Download JSON report as evidence.”  
+
+Scenario D — Research evaluation (optional, 2–3 min)
+1) Navbar → More ▾ → **Benchmark** (use small values N ≤ 10, M ≤ 4).  
+   - What you will see: CVL vs events chart for synthetic runs.  
+   - What to explain: “We measure verification latency under increasing load; curves align with Dashboard research charts.”  
+2) Reference Dashboard research tiles (Integrity breakdown, OAI histogram, CVL history).  
+   - What you will see: seeded slices/bars; CVL history line.  
+   - What to explain: “These are computed with the same formulas as Audit—EIS, CVL, OAI—anchored to ledger hashes.”  
+
+## What to say in 30 seconds (elevator pitch)
+- Problem: grievances and officer updates get lost or altered; auditors need verifiable trails.  
+- Approach: canonical JSON payloads, chained SHA256, and a swap-in ledger backend anchor every event.  
+- Metrics: EIS (integrity %), CVL (verification latency), OAI (officer accountability), TRT (resolution speed).  
+- Demo proof: submit → update → audit → tamper; EIS stays ~100% until tamper, then drops and flags missing anchors; JSON report is downloadable evidence.  
+- Roadmap: plug into Hyperledger Fabric (same APIs), add signed receipts/RBAC, keep the 3-table core stable.  
+
 ## Quickstart
 1) Create and activate a virtual environment (Python 3.10+ recommended).
 2) Install dependencies:
