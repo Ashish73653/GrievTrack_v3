@@ -86,6 +86,32 @@ def _compute_oai(complaint: Dict, events: List) -> Dict:
     }
 
 
+def _compute_trt(events: List[Dict]) -> Optional[float]:
+    submit_ts = None
+    closed_ts = None
+    for event in events:
+        if event["event_type"] == "SUBMIT" and not submit_ts:
+            submit_ts = _parse_iso(event["timestamp"])
+        if event["event_type"] in {"CLOSED", "RESOLVED"} and not closed_ts:
+            closed_ts = _parse_iso(event["timestamp"])
+        if submit_ts and closed_ts:
+            break
+
+    if not submit_ts or not closed_ts:
+        return None
+    if closed_ts < submit_ts:
+        return None
+    delta = closed_ts - submit_ts
+    return round(delta.total_seconds() / 3600, 2)
+
+
+def _compute_aci(events: List[Dict], ledger_map: Dict[str, str]) -> Dict:
+    total = len(events)
+    anchored = sum(1 for event in events if event["event_id"] in ledger_map)
+    score = round((anchored / total) * 100, 2) if total else 0.0
+    return {"score": score, "anchored": anchored, "total": total}
+
+
 def _latest_ledger_hash(cursor, complaint_id: str) -> Optional[str]:
     row = cursor.execute(
         """
@@ -107,12 +133,16 @@ def _verify_events_against_ledger(
     matched_count = 0
     chain_broken = False
     event_results = []
+    order_anomalies = 0
+    prev_ts: Optional[datetime] = None
 
     for event in events:
         event_dict = dict(event)
         cid = event_dict.get("complaint_id") or complaint_id or ""
         ledger_hash = ledger_by_event.get(event_dict["event_id"])
         expected_prev = prev_anchor_hash or "GENESIS"
+        current_ts = _parse_iso(event_dict.get("timestamp"))
+        out_of_order = bool(prev_ts and current_ts and current_ts < prev_ts)
 
         chain_payload = canonical_event_payload(
             complaint_id=cid,
@@ -141,6 +171,12 @@ def _verify_events_against_ledger(
             chain_status = "BROKEN"
             recomputed_hash = chain_hash
             chain_broken = True
+        elif out_of_order:
+            status = "ORDER_ANOMALY"
+            chain_status = "BROKEN"
+            recomputed_hash = chain_hash
+            chain_broken = True
+            order_anomalies += 1
         elif ledger_hash == chain_hash:
             status = "MATCH"
             chain_status = "OK"
@@ -159,6 +195,7 @@ def _verify_events_against_ledger(
 
         if ledger_hash:
             prev_anchor_hash = ledger_hash
+        prev_ts = current_ts or prev_ts
 
         event_results.append(
             {
@@ -179,6 +216,7 @@ def _verify_events_against_ledger(
         "events": event_results,
         "matched": matched_count,
         "chain_broken": chain_broken,
+        "order_anomalies": order_anomalies,
     }
 
 
@@ -190,7 +228,7 @@ def _build_dashboard_data() -> Dict:
             """
             SELECT complaint_id, event_id, event_type, actor_id, remarks, timestamp
             FROM complaint_events
-            ORDER BY complaint_id ASC, timestamp ASC, rowid ASC
+            ORDER BY complaint_id ASC, rowid ASC
             """
         ).fetchall()
         ledger_rows = cursor.execute(
@@ -224,6 +262,11 @@ def _build_dashboard_data() -> Dict:
     delayed_complaints = 0
     response_hours_total = 0.0
     response_samples = 0
+    trt_hours_total = 0.0
+    trt_samples = 0
+    priority_trt: Dict[str, Dict[str, float]] = defaultdict(lambda: {"total": 0.0, "count": 0})
+    global_status_counts: Dict[str, int] = defaultdict(int)
+    aci_scores: List[float] = []
     officer_stats: Dict[str, Dict] = {}
 
     for complaint in complaints:
@@ -241,9 +284,13 @@ def _build_dashboard_data() -> Dict:
         )
         total_events += len(complaint_events)
         matched_events += verification["matched"]
-        tampered_events += sum(
-            1 for event in verification["events"] if event["status"] == "TAMPERED"
-        )
+        status_counts = defaultdict(int)
+        for event in verification["events"]:
+            status_counts[event["status"]] += 1
+        tampered_events += status_counts.get("TAMPERED", 0)
+        status_counts["MISSING_OFFCHAIN"] += len(missing_offchain)
+        for status, count in status_counts.items():
+            global_status_counts[status] += count
 
         oai = _compute_oai(complaint_dict, complaint_events)
         if oai.get("status") == "DELAYED":
@@ -251,6 +298,18 @@ def _build_dashboard_data() -> Dict:
         if oai.get("status") in {"WITHIN_SLA", "DELAYED"} and "duration_hours" in oai:
             response_hours_total += oai["duration_hours"]
             response_samples += 1
+
+        aci = _compute_aci(complaint_events, ledger_map)
+        aci_scores.append(aci["score"])
+
+        trt_hours = _compute_trt(complaint_events)
+        if trt_hours is not None:
+            trt_hours_total += trt_hours
+            trt_samples += 1
+            priority_key = (complaint_dict.get("priority") or "UNSPECIFIED").upper()
+            priority_stats = priority_trt[priority_key]
+            priority_stats["total"] += trt_hours
+            priority_stats["count"] += 1
 
         officer_id = None
         for event in complaint_events:
@@ -337,6 +396,34 @@ def _build_dashboard_data() -> Dict:
         },
     }
 
+    avg_trt_overall = round(trt_hours_total / trt_samples, 2) if trt_samples else 0.0
+    trt_priority_labels = []
+    trt_priority_values = []
+    for priority, stats in sorted(priority_trt.items()):
+        if not stats["count"]:
+            continue
+        trt_priority_labels.append(priority)
+        trt_priority_values.append(round(stats["total"] / stats["count"], 2))
+
+    chart_data["trt_by_priority"] = {
+        "labels": trt_priority_labels,
+        "values": trt_priority_values,
+    }
+
+    integrity_breakdown = {
+        "MATCH": global_status_counts.get("MATCH", 0),
+        "TAMPERED": global_status_counts.get("TAMPERED", 0),
+        "MISSING_LEDGER": global_status_counts.get("MISSING_LEDGER", 0),
+        "MISSING_OFFCHAIN": global_status_counts.get("MISSING_OFFCHAIN", 0),
+        "ORDER_ANOMALY": global_status_counts.get("ORDER_ANOMALY", 0),
+    }
+    chart_data["integrity_breakdown"] = {
+        "labels": list(integrity_breakdown.keys()),
+        "values": list(integrity_breakdown.values()),
+    }
+
+    global_aci_avg = round(sum(aci_scores) / len(aci_scores), 2) if aci_scores else 0.0
+
     return {
         "complaint_summary": {
             "total": total_complaints,
@@ -347,6 +434,8 @@ def _build_dashboard_data() -> Dict:
             "total_events": integrity_events,
             "tampered_events": tampered_events,
             "global_eis": global_eis,
+            "missing_offchain": missing_offchain_total,
+            "global_aci": global_aci_avg,
         },
         "officer_summary": {
             "total_officers": len(officer_stats),
@@ -357,6 +446,16 @@ def _build_dashboard_data() -> Dict:
             if response_samples
             else 0.0,
         },
+        "trt_summary": {
+            "avg_hours": avg_trt_overall,
+            "by_priority": dict(
+                zip(
+                    trt_priority_labels,
+                    trt_priority_values,
+                )
+            ),
+        },
+        "integrity_breakdown": integrity_breakdown,
         "audit_summary": audit_summary,
         "officer_oai": officer_rows,
         "chart_data": chart_data,
@@ -550,6 +649,129 @@ def _simulate_tamper(complaint_id: str) -> Optional[str]:
         return tampered_remarks
 
 
+def _delete_latest_event(complaint_id: str) -> Optional[Dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        latest_event = cursor.execute(
+            """
+            SELECT event_id, event_type, actor_id, remarks, timestamp
+            FROM complaint_events
+            WHERE complaint_id = ?
+            ORDER BY timestamp DESC, rowid DESC
+            LIMIT 1
+            """,
+            (complaint_id,),
+        ).fetchone()
+        if not latest_event:
+            return None
+        cursor.execute("DELETE FROM complaint_events WHERE event_id = ?", (latest_event["event_id"],))
+        next_event = cursor.execute(
+            """
+            SELECT event_type
+            FROM complaint_events
+            WHERE complaint_id = ?
+            ORDER BY timestamp DESC, rowid DESC
+            LIMIT 1
+            """,
+            (complaint_id,),
+        ).fetchone()
+        new_status = next_event["event_type"] if next_event else "UNKNOWN"
+        cursor.execute(
+            "UPDATE complaints SET current_status = ? WHERE complaint_id = ?",
+            (new_status, complaint_id),
+        )
+        conn.commit()
+        return dict(latest_event)
+
+
+def _delete_latest_ledger_anchor(complaint_id: str) -> Optional[Dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        latest_anchor = cursor.execute(
+            """
+            SELECT ledger_id, event_id, event_hash, timestamp
+            FROM ledger_hashes
+            WHERE complaint_id = ?
+            ORDER BY timestamp DESC, ledger_id DESC
+            LIMIT 1
+            """,
+            (complaint_id,),
+        ).fetchone()
+        if not latest_anchor:
+            return None
+        cursor.execute("DELETE FROM ledger_hashes WHERE ledger_id = ?", (latest_anchor["ledger_id"],))
+        conn.commit()
+        return dict(latest_anchor)
+
+
+def _insert_fake_event(complaint_id: str) -> Optional[Dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        complaint = cursor.execute(
+            "SELECT * FROM complaints WHERE complaint_id = ?", (complaint_id,)
+        ).fetchone()
+        if not complaint:
+            return None
+
+    fake_event_id = new_event_id()
+    fake_ts = now_iso()
+    fake_type = "FAKE_EVENT"
+    fake_actor = "adversary"
+    fake_remarks = "Unanchored insertion by adversary"
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO complaint_events (
+                event_id, complaint_id, event_type, actor_id, remarks, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (fake_event_id, complaint_id, fake_type, fake_actor, fake_remarks, fake_ts),
+        )
+        cursor.execute(
+            "UPDATE complaints SET current_status = ? WHERE complaint_id = ?",
+            (fake_type, complaint_id),
+        )
+        conn.commit()
+
+    return {
+        "event_id": fake_event_id,
+        "event_type": fake_type,
+        "actor_id": fake_actor,
+        "remarks": fake_remarks,
+        "timestamp": fake_ts,
+    }
+
+
+def _reorder_latest_events(complaint_id: str) -> Optional[List[Dict]]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        rows = cursor.execute(
+            """
+            SELECT event_id, timestamp
+            FROM complaint_events
+            WHERE complaint_id = ?
+            ORDER BY timestamp DESC, rowid DESC
+            LIMIT 2
+            """,
+            (complaint_id,),
+        ).fetchall()
+        if len(rows) < 2:
+            return None
+        first, second = rows[0], rows[1]
+        cursor.execute(
+            "UPDATE complaint_events SET timestamp = ? WHERE event_id = ?",
+            (second["timestamp"], first["event_id"]),
+        )
+        cursor.execute(
+            "UPDATE complaint_events SET timestamp = ? WHERE event_id = ?",
+            (first["timestamp"], second["event_id"]),
+        )
+        conn.commit()
+        return [dict(first), dict(second)]
+
+
 def _verify_complaint(complaint_id: str, action: str) -> Dict:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -564,7 +786,7 @@ def _verify_complaint(complaint_id: str, action: str) -> Dict:
             SELECT event_id, event_type, actor_id, remarks, timestamp
             FROM complaint_events
             WHERE complaint_id = ?
-            ORDER BY timestamp ASC, rowid ASC
+            ORDER BY rowid ASC
             """,
             (complaint_id,),
         ).fetchall()
@@ -599,14 +821,21 @@ def _verify_complaint(complaint_id: str, action: str) -> Dict:
     event_results = verification["events"]
     matched_count = verification["matched"]
     chain_broken = verification["chain_broken"]
+    order_anomalies = verification.get("order_anomalies", 0)
+    status_counts = defaultdict(int)
+    for event in event_results:
+        status_counts[event["status"]] += 1
+    status_counts["MISSING_OFFCHAIN"] += len(missing_offchain)
 
     cvl_ms = int((time.perf_counter() - start_time) * 1000)
     total_events = len(events) + len(missing_offchain)
     eis_score = round((matched_count / total_events) * 100, 2) if total_events else 0.0
-    chain_status = "BROKEN" if (chain_broken or missing_offchain) else "OK"
+    chain_status = "BROKEN" if (chain_broken or missing_offchain or order_anomalies) else "OK"
 
     complaint = dict(complaint_row)
     oai = _compute_oai(complaint, events)
+    aci = _compute_aci([dict(e) for e in events], ledger_by_event)
+    trt_hours = _compute_trt([dict(e) for e in events])
 
     run_data = {
         "run_id": len(AUDIT_HISTORY) + 1,
@@ -622,6 +851,10 @@ def _verify_complaint(complaint_id: str, action: str) -> Dict:
             "oai": oai,
             "chain_status": chain_status,
             "action": action,
+            "status_counts": dict(status_counts),
+            "order_anomalies": order_anomalies,
+            "aci": aci,
+            "trt_hours": trt_hours,
         },
         "timestamp": now_iso(),
     }
@@ -841,15 +1074,82 @@ def timeline():
     )
 
 
+@app.route("/attacks", methods=["GET", "POST"])
+def attacks():
+    complaint_id = request.args.get("complaint_id", "").strip()
+    if request.method == "POST":
+        complaint_id = request.form.get("complaint_id", "").strip() or complaint_id
+    attack_result = None
+    error = None
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        complaint_options = cursor.execute(
+            """
+            SELECT complaint_id, title, current_status, created_at
+            FROM complaints
+            ORDER BY created_at DESC, rowid DESC
+            LIMIT 20
+            """
+        ).fetchall()
+
+    if request.method == "POST":
+        attack = request.form.get("attack", "").strip()
+        if not complaint_id:
+            error = "Complaint ID is required to run an attack."
+        else:
+            if attack == "MODIFY_LATEST_REMARKS":
+                tampered = _simulate_tamper(complaint_id)
+                if tampered is None:
+                    error = "No events available to tamper."
+                else:
+                    attack_result = {"attack": attack, "details": tampered}
+            elif attack == "DELETE_LATEST_EVENT":
+                deleted = _delete_latest_event(complaint_id)
+                if not deleted:
+                    error = "No events found to delete."
+                else:
+                    attack_result = {"attack": attack, "details": deleted}
+            elif attack == "DELETE_LEDGER_ANCHOR":
+                anchor = _delete_latest_ledger_anchor(complaint_id)
+                if not anchor:
+                    error = "No ledger anchor found to delete."
+                else:
+                    attack_result = {"attack": attack, "details": anchor}
+            elif attack == "INSERT_FAKE_EVENT":
+                fake_event = _insert_fake_event(complaint_id)
+                if not fake_event:
+                    error = "Complaint not found for fake insertion."
+                else:
+                    attack_result = {"attack": attack, "details": fake_event}
+            elif attack == "REORDER_ATTACK":
+                swapped = _reorder_latest_events(complaint_id)
+                if not swapped:
+                    error = "Need at least two events to reorder."
+                else:
+                    attack_result = {"attack": attack, "details": swapped}
+            else:
+                error = "Select a valid attack type."
+
+    return render_template(
+        "attacks.html",
+        complaint_id=complaint_id,
+        complaint_options=complaint_options,
+        attack_result=attack_result,
+        error=error,
+    )
+
+
 @app.route("/audit", methods=["GET", "POST"])
 def audit():
-    complaint_id = ""
+    complaint_id = request.args.get("complaint_id", "").strip()
     audit_result = None
     error = None
     tamper_note = None
+    status_hints = {}
 
     if request.method == "POST":
-        complaint_id = request.form.get("complaint_id", "").strip()
+        complaint_id = request.form.get("complaint_id", "").strip() or complaint_id
         action = request.form.get("action", "verify")
 
         if not complaint_id:
@@ -866,6 +1166,13 @@ def audit():
                 if audit_result.get("error"):
                     error = audit_result["error"]
                     audit_result = None
+                else:
+                    counts = audit_result["summary"].get("status_counts", {})
+                    status_hints = {
+                        "missing_ledger": counts.get("MISSING_LEDGER", 0),
+                        "missing_offchain": counts.get("MISSING_OFFCHAIN", 0),
+                        "order_anomaly": counts.get("ORDER_ANOMALY", 0),
+                    }
 
     latest_run_id = AUDIT_HISTORY[-1]["run_id"] if AUDIT_HISTORY else None
     return render_template(
@@ -876,6 +1183,7 @@ def audit():
         error=error,
         tamper_note=tamper_note,
         latest_run_id=latest_run_id,
+        status_hints=status_hints,
     )
 
 

@@ -7,6 +7,7 @@
     <div>
         <h1>Timeline</h1>
         <p>Review anchored events in chronological order for a single complaint.</p>
+        <p class="breadcrumb">Dashboard / Timeline</p>
     </div>
     <div class="quick">
         <a class="btn btn-secondary" href="{{ url_for('audit') }}">Verify chain</a>
@@ -51,7 +52,9 @@
         <div class="meta-grid">
             <div class="meta-tile">
                 <p class="meta-label">Complaint ID</p>
-                <p class="meta-value mono">{{ complaint.complaint_id }}</p>
+                <p class="meta-value mono hash-cell">{{ complaint.complaint_id }}
+                    <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ complaint.complaint_id }}">Copy ID</button>
+                </p>
             </div>
             <div class="meta-tile">
                 <p class="meta-label">Category</p>

@@ -21,7 +21,7 @@
         </div>
         <span class="badge-neutral">Step 1 of 3</span>
     </div>
-    <form method="post" class="form">
+    <form method="post" class="form" id="submit-form">
         <div class="form-grid">
             <div class="field">
                 <label for="citizen_id">Citizen ID</label>
@@ -30,17 +30,17 @@
             </div>
             <div class="field">
                 <label for="title">Title</label>
-                <input id="title" name="title" type="text" placeholder="Short headline for the grievance">
-                <p class="input-note">Optional but helps identify the case in lists.</p>
+                <input id="title" name="title" type="text" placeholder="Short headline for the grievance" required>
+                <p class="input-note">Required for audit demos; keep it brief.</p>
             </div>
             <div class="field">
                 <label for="category">Category</label>
-                <input id="category" name="category" type="text" placeholder="Road, Water, Safety, etc.">
+                <input id="category" name="category" type="text" placeholder="Road, Water, Safety, etc." required>
                 <p class="input-note">Free-form taxonomy; no additional lookup tables are used.</p>
             </div>
             <div class="field">
                 <label for="priority">Priority</label>
-                <select id="priority" name="priority">
+                <select id="priority" name="priority" required>
                     <option value="">Select</option>
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
@@ -50,12 +50,13 @@
             </div>
             <div class="field" style="grid-column: 1 / -1;">
                 <label for="description">Description</label>
-                <textarea id="description" name="description" rows="3" placeholder="Describe the issue and location"></textarea>
+                <textarea id="description" name="description" rows="3" placeholder="Describe the issue and location" required></textarea>
                 <p class="input-note">Stored off-chain; hashes use canonical payloads to anchor integrity.</p>
             </div>
         </div>
         <div class="actions">
             <button class="btn btn-primary" type="submit">Submit grievance</button>
+            <button class="btn btn-ghost" type="button" data-fill-demo data-target="submit-form">Use sample demo values</button>
             <span class="print-note">Hashes and IDs appear in the receipt after submission.</span>
         </div>
     </form>

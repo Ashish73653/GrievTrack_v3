@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Attack Lab | GrievTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Auditor Lab</h1>
+        <p>Trigger adversarial actions against a complaint and observe how the verifier responds.</p>
+        <p class="breadcrumb">Dashboard / Attacks</p>
+    </div>
+    <div class="quick">
+        <a class="btn btn-secondary" href="{{ url_for('audit') }}">Go to audit</a>
+        <a class="btn btn-ghost" href="{{ url_for('reset') }}">Reset data</a>
+    </div>
+</div>
+
+<section class="card stack">
+    <div class="section-title">
+        <div>
+            <h3>Configure target complaint</h3>
+            <p class="muted small">Select any existing complaint_id, then launch one of the built-in attacks.</p>
+        </div>
+        <span class="badge-neutral">Additive only</span>
+    </div>
+    <form method="post" class="form">
+        <div class="form-grid">
+            <div class="field">
+                <label for="complaint_id">Complaint ID</label>
+                <input id="complaint_id" name="complaint_id" type="text" value="{{ complaint_id }}" placeholder="CMP-YYYY-XXXXXX" required>
+                <p class="input-note">Paste from a receipt or pick from recent anchors.</p>
+            </div>
+            <div class="field">
+                <label for="recent_complaints">Recent complaints</label>
+                <select id="recent_complaints" data-fill-select="complaint_id">
+                    <option value="">Select to auto-fill</option>
+                    {% for item in complaint_options %}
+                    <option value="{{ item.complaint_id }}">{{ item.complaint_id }} — {{ item.title or "Untitled" }} ({{ item.current_status or "UNKNOWN" }})</option>
+                    {% endfor %}
+                </select>
+                <p class="input-note">Limited to latest 20 complaints.</p>
+            </div>
+        </div>
+        <div class="attack-grid">
+            <button class="btn btn-secondary" type="submit" name="attack" value="MODIFY_LATEST_REMARKS">Modify latest remarks</button>
+            <button class="btn btn-secondary" type="submit" name="attack" value="DELETE_LATEST_EVENT">Delete latest event</button>
+            <button class="btn btn-secondary" type="submit" name="attack" value="DELETE_LEDGER_ANCHOR">Delete ledger anchor</button>
+            <button class="btn btn-secondary" type="submit" name="attack" value="INSERT_FAKE_EVENT">Insert fake event</button>
+            <button class="btn btn-secondary" type="submit" name="attack" value="REORDER_ATTACK">Reorder timestamps</button>
+        </div>
+        <div class="actions">
+            <a class="btn btn-primary" href="{{ url_for('audit', complaint_id=complaint_id) }}">Run verification now</a>
+            <span class="print-note">Use Reset to undo attacks; schema remains unchanged.</span>
+        </div>
+    </form>
+
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+
+    {% if attack_result %}
+    <div class="card" style="margin:0;">
+        <div class="section-title">
+            <div>
+                <h3>Attack applied: {{ attack_result.attack }}</h3>
+                <p class="muted small">Change is written directly to the targeted store (off-chain or ledger).</p>
+            </div>
+            <span class="badge-danger">Adversarial</span>
+        </div>
+        <div class="callout">
+            <p class="muted small">Details:</p>
+            <pre class="mono">{{ attack_result.details | tojson(indent=2) }}</pre>
+            <p class="muted small">Re-run the auditor to observe detection signals.</p>
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

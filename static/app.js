@@ -1,4 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const createToast = (message, tone = "neutral") => {
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${tone}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("show"));
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => toast.remove(), 200);
+    }, 1800);
+  };
+
   const copyButtons = document.querySelectorAll("[data-copy-text]");
   copyButtons.forEach((button) => {
     const originalLabel = button.textContent;
@@ -9,12 +21,14 @@ document.addEventListener("DOMContentLoaded", () => {
         await navigator.clipboard.writeText(text);
         button.textContent = "Copied";
         button.classList.add("btn-primary");
+        createToast("Copied to clipboard", "success");
         setTimeout(() => {
           button.textContent = originalLabel;
           button.classList.remove("btn-primary");
         }, 1200);
       } catch (err) {
         button.textContent = "Copy failed";
+        createToast("Copy failed", "error");
         setTimeout(() => (button.textContent = originalLabel), 1200);
       }
     });
@@ -38,6 +52,54 @@ document.addEventListener("DOMContentLoaded", () => {
     trigger.addEventListener("click", (event) => {
       event.preventDefault();
       window.print();
+    });
+  });
+
+  const demoButtons = document.querySelectorAll("[data-fill-demo]");
+  const demoPayloads = {
+    "submit-form": {
+      citizen_id: "CIT-1001",
+      title: "Pothole near community center",
+      category: "Road Safety",
+      priority: "HIGH",
+      description: "Large pothole causing traffic slowdowns near the main junction.",
+    },
+    "update-form": {
+      complaint_id: "CMP-DEMO-0001",
+      officer_id: "OFF-210",
+      status: "IN_PROGRESS",
+      remarks: "Site inspection scheduled with maintenance crew.",
+    },
+  };
+
+  demoButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetId = button.getAttribute("data-target");
+      if (!targetId || !demoPayloads[targetId]) return;
+      const form = document.getElementById(targetId);
+      if (!form) return;
+      const payload = demoPayloads[targetId];
+      Object.entries(payload).forEach(([key, value]) => {
+        const field = form.querySelector(`[name="${key}"]`);
+        if (field && !field.value) {
+          field.value = value;
+        }
+      });
+      createToast("Demo values applied", "success");
+    });
+  });
+
+  const fillSelects = document.querySelectorAll("[data-fill-select]");
+  fillSelects.forEach((select) => {
+    const targetId = select.getAttribute("data-fill-select");
+    const targetField = document.getElementById(targetId);
+    if (!targetField) return;
+    select.addEventListener("change", () => {
+      if (select.value) {
+        targetField.value = select.value;
+        targetField.focus();
+        createToast("Complaint ID selected", "success");
+      }
     });
   });
 });
