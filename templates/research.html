@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Simulation Lab | GrievTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Simulation Lab</h1>
+        <p>Paper-style experiments for CVL scalability and EIS resilience without touching the database schema.</p>
+        <p class="breadcrumb">Dashboard / Simulation Lab</p>
+    </div>
+    <div class="quick">
+        <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Back to dashboard</a>
+        <a class="btn btn-secondary" href="{{ url_for('audit') }}">Audit now</a>
+    </div>
+</div>
+
+<section class="stack">
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3>Generate deterministic simulations</h3>
+                <p class="muted small">Modeled curves stay capped for speed; results are stored in memory and can be exported as JSON.</p>
+            </div>
+            <span class="badge-neutral">No new tables</span>
+        </div>
+        <form method="post" class="form">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="dataset_size">Dataset size</label>
+                    <select id="dataset_size" name="dataset_size">
+                        <option value="small" {% if run and run.dataset_size == 'small' %}selected{% endif %}>Small (up to 2.5k events)</option>
+                        <option value="medium" {% if run and run.dataset_size == 'medium' %}selected{% endif %}>Medium (up to 10k events)</option>
+                    </select>
+                    <p class="input-note">Uses modeled CVL scaling with log-axis rendering.</p>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">Generate simulation</button>
+                {% if run %}
+                <a class="btn btn-secondary" href="{{ url_for('research_export') }}">Download JSON</a>
+                {% endif %}
+            </div>
+        </form>
+        {% if run %}
+        <div class="meta-grid">
+            <div class="meta-tile">
+                <p class="meta-label">Run</p>
+                <p class="meta-value mono">#{{ run.run_id }} · {{ run.dataset_size|capitalize }}</p>
+            </div>
+            <div class="meta-tile">
+                <p class="meta-label">Timestamp</p>
+                <p class="meta-value mono">{{ run.timestamp }}</p>
+            </div>
+            <div class="meta-tile">
+                <p class="meta-label">Notes</p>
+                <p class="meta-value">{{ run.cvl_scalability.notes }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if run %}
+    <div class="grid">
+        <div class="card">
+            <div class="section-title">
+                <div>
+                    <h3>CVL scalability (log scale)</h3>
+                    <p class="muted small">Anchored verification vs pure cloud baseline, capped arrays for fast rendering.</p>
+                </div>
+                <span class="badge-neutral">Simulated experiment</span>
+            </div>
+            <div class="chart-box tall"><canvas id="cvlScalability"></canvas></div>
+        </div>
+        <div class="card">
+            <div class="section-title">
+                <div>
+                    <h3>EIS vs tamper rate</h3>
+                    <p class="muted small">Anchored chain resists tampering better than pure cloud storage.</p>
+                </div>
+                <span class="badge-neutral">Simulated experiment</span>
+            </div>
+            <div class="chart-box tall"><canvas id="eisTamper"></canvas></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3>Run history</h3>
+                <p class="muted small">Recent deterministic runs held in memory (cleared with Reset).</p>
+            </div>
+            <span class="badge-neutral">Session only</span>
+        </div>
+        {% if research_runs %}
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Run</th>
+                        <th>Dataset</th>
+                        <th>Events</th>
+                        <th class="numeric">Anchored CVL (s)</th>
+                        <th class="numeric">Pure cloud CVL (s)</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in research_runs|reverse %}
+                    <tr>
+                        <td class="mono">#{{ item.run_id }}</td>
+                        <td>{{ item.dataset_size|capitalize }}</td>
+                        <td class="mono">{{ item.cvl_scalability.events|join(', ') }}</td>
+                        <td class="numeric">{{ item.cvl_scalability.anchored_seconds|join(', ') }}</td>
+                        <td class="numeric">{{ item.cvl_scalability.pure_cloud_seconds|join(', ') }}</td>
+                        <td class="mono small">{{ item.timestamp }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="muted small">Generate a simulation to populate history.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const runData = {{ run | tojson | safe if run else 'null' }};
+    if (runData) {
+        const mustard = '#c49000';
+        const charcoal = '#111827';
+        const teal = '#1d9a6c';
+        const accent = '#d97706';
+
+        const cvlCtx = document.getElementById('cvlScalability').getContext('2d');
+        new Chart(cvlCtx, {
+            type: 'line',
+            data: {
+                labels: runData.cvl_scalability.events,
+                datasets: [
+                    {
+                        label: 'GrievTrack (Anchored)',
+                        data: runData.cvl_scalability.anchored_seconds,
+                        borderColor: mustard,
+                        backgroundColor: mustard + '33',
+                        pointBackgroundColor: mustard,
+                        tension: 0.25,
+                        fill: true,
+                    },
+                    {
+                        label: 'Pure Cloud',
+                        data: runData.cvl_scalability.pure_cloud_seconds,
+                        borderColor: charcoal,
+                        backgroundColor: charcoal + '22',
+                        pointBackgroundColor: charcoal,
+                        tension: 0.25,
+                        fill: true,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: {
+                        display: true,
+                        text: 'CVL seconds (log scale)',
+                        color: charcoal,
+                        font: { weight: '600' }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: '# Events', color: charcoal },
+                        grid: { color: '#e5e7eb' }
+                    },
+                    y: {
+                        type: 'logarithmic',
+                        title: { display: true, text: 'CVL (s)', color: charcoal },
+                        grid: { color: '#e5e7eb' },
+                        ticks: { callback: (v, i, ticks) => Number(v).toString() }
+                    }
+                }
+            }
+        });
+
+        const eisCtx = document.getElementById('eisTamper').getContext('2d');
+        new Chart(eisCtx, {
+            type: 'line',
+            data: {
+                labels: runData.eis_vs_tamper.tamper_rates,
+                datasets: [
+                    {
+                        label: 'GrievTrack (Anchored)',
+                        data: runData.eis_vs_tamper.anchored_eis,
+                        borderColor: teal,
+                        backgroundColor: teal + '2d',
+                        pointBackgroundColor: teal,
+                        tension: 0.3,
+                        fill: true,
+                    },
+                    {
+                        label: 'Pure Cloud',
+                        data: runData.eis_vs_tamper.pure_cloud_eis,
+                        borderColor: accent,
+                        backgroundColor: accent + '24',
+                        pointBackgroundColor: accent,
+                        tension: 0.3,
+                        fill: true,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: {
+                        display: true,
+                        text: 'EIS vs Tamper Rate (simulated)',
+                        color: charcoal,
+                        font: { weight: '600' }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Tamper rate (%)', color: charcoal },
+                        grid: { color: '#e5e7eb' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'EIS (%)', color: charcoal },
+                        grid: { color: '#e5e7eb' },
+                        suggestedMax: 100
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

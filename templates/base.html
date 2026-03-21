@@ -12,10 +12,13 @@
 <body>
     <header class="topbar">
         <div class="container topbar__inner">
-            <a class="brand" href="{{ url_for('dashboard') }}">
-                <span class="dot"></span>
-                GrievTrack
-            </a>
+            <div class="brand">
+                <a class="brand__title" href="{{ url_for('dashboard') }}">
+                    <span class="dot"></span>
+                    GrievTrack
+                </a>
+                <p class="brand__subtitle">Ledger-anchored grievance lab</p>
+            </div>
             <nav class="nav">
                 <div class="nav-links">
                     <a class="nav-link {% if request.endpoint in ['dashboard'] %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
@@ -23,6 +26,7 @@
                     <a class="nav-link {% if request.endpoint in ['update'] %}active{% endif %}" href="{{ url_for('update') }}">Update</a>
                     <a class="nav-link {% if request.endpoint in ['timeline'] %}active{% endif %}" href="{{ url_for('timeline') }}">Timeline</a>
                     <a class="nav-link {% if request.endpoint in ['audit'] %}active{% endif %}" href="{{ url_for('audit') }}">Audit</a>
+                    <a class="nav-link {% if request.endpoint in ['research'] %}active{% endif %}" href="{{ url_for('research') }}">Simulation Lab</a>
                     <a class="nav-link {% if request.endpoint in ['attacks'] %}active{% endif %}" href="{{ url_for('attacks') }}">Attacks</a>
                     <a class="nav-link {% if request.endpoint in ['benchmark_run'] %}active{% endif %}" href="{{ url_for('benchmark_run') }}">Benchmark</a>
                     <a class="nav-link {% if request.endpoint in ['reset'] %}active{% endif %}" href="{{ url_for('reset') }}">Reset</a>

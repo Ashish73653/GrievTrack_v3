@@ -94,6 +94,34 @@
         </ol>
     </div>
 
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3>Research analytics</h3>
+                <p class="muted small">Paper-style visuals for panel walkthroughs: integrity, accountability, latency, and priority impact.</p>
+            </div>
+            <span class="badge-neutral">Session snapshot</span>
+        </div>
+        <div class="charts-grid research-grid">
+            <div class="chart-block">
+                <p class="small muted">Integrity breakdown (all complaints)</p>
+                <div class="chart-box short"><canvas id="integrityBreakdownResearch"></canvas></div>
+            </div>
+            <div class="chart-block">
+                <p class="small muted">OAI distribution (officers)</p>
+                <div class="chart-box short"><canvas id="oaiHistogram"></canvas></div>
+            </div>
+            <div class="chart-block">
+                <p class="small muted">TRT by priority</p>
+                <div class="chart-box short"><canvas id="trtByPriorityResearch"></canvas></div>
+            </div>
+            <div class="chart-block">
+                <p class="small muted">CVL history</p>
+                <div class="chart-box short"><canvas id="cvlHistoryResearch"></canvas></div>
+            </div>
+        </div>
+    </div>
+
     <div class="grid">
         <div class="card">
             <div class="section-title">
@@ -193,6 +221,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const chartData = {{ chart_data | tojson }};
+    const mustard = '#c49000';
+    const slate = '#111827';
 
     function renderLineChart(id, labels, values, label, color) {
         const canvas = document.getElementById(id);
@@ -225,6 +255,42 @@
         });
     }
 
+    function renderLineChartLogy(id, labels, values, label, color) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const context = canvas.getContext('2d');
+        const sanitized = (values || []).map((v) => (v && v > 0 ? v : 0.01));
+        new Chart(context, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label,
+                    data: sanitized,
+                    tension: 0.25,
+                    borderColor: color,
+                    backgroundColor: color + '26',
+                    fill: true,
+                    pointRadius: 3,
+                    pointBackgroundColor: color,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                    y: {
+                        type: 'logarithmic',
+                        grid: { color: '#e5e7eb' },
+                        ticks: { callback: (value) => Number(value).toString() },
+                    },
+                    x: { grid: { color: '#e5e7eb' } },
+                },
+            },
+        });
+    }
+
     function renderBarChart(id, labels, within, delayed) {
         const canvas = document.getElementById(id);
         if (!canvas) return;
@@ -243,6 +309,32 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom' } },
                 scales: { y: { beginAtZero: true } },
+            },
+        });
+    }
+
+    function renderSimpleBar(id, labels, values, color) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Count',
+                    data: values,
+                    backgroundColor: color,
+                    borderRadius: 6,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    x: { grid: { display: false } },
+                },
             },
         });
     }
@@ -293,5 +385,19 @@
 
     renderStackedBar('trtByPriority', chartData.trt_by_priority.labels, chartData.trt_by_priority.values, 'Avg TRT (h)', '#5b21b6');
     renderPie('integrityBreakdown', chartData.integrity_breakdown.labels, chartData.integrity_breakdown.values);
+
+    const research = chartData.research || {};
+    if (research.integrity_breakdown && research.integrity_breakdown.values && research.integrity_breakdown.values.length) {
+        renderSimpleBar('integrityBreakdownResearch', research.integrity_breakdown.labels, research.integrity_breakdown.values, mustard);
+    }
+    if (research.oai_histogram && research.oai_histogram.values && research.oai_histogram.values.length) {
+        renderSimpleBar('oaiHistogram', research.oai_histogram.labels, research.oai_histogram.values, '#1d9a6c');
+    }
+    if (research.trt_by_priority && research.trt_by_priority.values && research.trt_by_priority.values.length) {
+        renderSimpleBar('trtByPriorityResearch', research.trt_by_priority.labels, research.trt_by_priority.values, '#5b21b6');
+    }
+    if (research.cvl_history && research.cvl_history.values && research.cvl_history.values.length) {
+        renderLineChartLogy('cvlHistoryResearch', research.cvl_history.labels, research.cvl_history.values, 'CVL (ms)', slate);
+    }
 </script>
 {% endblock %}
