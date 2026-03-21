@@ -41,17 +41,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const nav = document.querySelector("[data-nav]");
   const navToggle = document.querySelector("[data-nav-toggle]");
+  const actionsToggle = document.querySelector("[data-actions-toggle]");
+  const actionsMenu = document.querySelector("[data-actions-menu]");
+
+  const closeActions = () => {
+    if (actionsMenu && actionsToggle) {
+      actionsMenu.classList.remove("open");
+      actionsToggle.setAttribute("aria-expanded", "false");
+    }
+  };
+
   if (nav && navToggle) {
     const closeNav = () => {
       nav.classList.remove("open");
       navToggle.setAttribute("aria-expanded", "false");
+      closeActions();
     };
     navToggle.addEventListener("click", () => {
       const isOpen = nav.classList.toggle("open");
       navToggle.setAttribute("aria-expanded", isOpen.toString());
+      if (!isOpen) {
+        closeActions();
+      }
     });
     nav.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", closeNav);
+    });
+  }
+
+  if (actionsToggle && actionsMenu) {
+    actionsToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = actionsMenu.classList.toggle("open");
+      actionsToggle.setAttribute("aria-expanded", isOpen.toString());
+    });
+    document.addEventListener("click", (event) => {
+      if (actionsMenu.contains(event.target) || actionsToggle.contains(event.target)) return;
+      closeActions();
     });
   }
 

@@ -32,6 +32,42 @@ export GRIEVTRACK_LEDGER_BACKEND=fabric_stub  # default is sqlite
 - Reproducibility: use **Reset** (type `RESET`) to clear complaints, events, ledger anchors, audit memory, and `fabric_stub/anchored_log.jsonl`. Benchmark via **Benchmark** to compare CVL under controlled N/M limits (caps: N ≤ 20, M ≤ 6).
 - Docs quick links: [Demo script](docs/DEMO_SCRIPT.md), [Talk track](docs/THESIS_TALK_TRACK.md), [Architecture](docs/ARCHITECTURE.md), [Threat model](docs/THREAT_MODEL.md), [Metrics](docs/METRICS.md), [Screenshots checklist](docs/screenshots/README.md).
 
+## Recommended demo workflow (10 minutes)
+1) **Seed demo data (Seed page)** — loads curated complaints with SLA variety, one tamper, and a missing-ledger follow-up so every chart lights up.  
+2) **Dashboard overview** — call out summary tiles plus chart captions (integrity breakdown, OAI histogram, TRT by priority, EIS/CVL trends).  
+3) **Pick a complaint** — from the dashboard/timeline, copy a complaint_id (deterministic SEED-CMP IDs available).  
+4) **Audit verify** — paste the ID, run Verify; read EIS/CVL/OAI/ACI and chain status.  
+5) **Tamper/Attacks demo** — click Simulate tamper or open Attacks; optionally delete/insert to mimic missing ledger/off-chain anchors.  
+6) **Re-run audit** — show EIS drop, BROKEN chain, and status breakdown table; download JSON to prove it.  
+7) **Benchmark (small run)** — run within caps (e.g., N=5, M=3); interpret CVL vs events slope using the caption and relate to research charts.
+
+## Demo scenarios
+### Scenario 1: Happy path (EIS = 100, chain OK, SLA within)
+- Submit a new complaint (or use Seeded), update through ASSIGNED → IN_PROGRESS → CLOSED, then Audit it.  
+- Point out EIS 100, chain status OK/LEGACY, ACI anchored, and TRT within SLA; dashboard charts stay green.  
+- Talk track: deterministic payloads chained from GENESIS keep hashes stable and make receipts verifiable.
+
+### Scenario 2: Tamper/attack (EIS drops, chain broken, missing flagged)
+- In Audit, choose a complaint → Simulate tamper → Verify again.  
+- Call out TAMPERED rows, missing ledger/off-chain badges, BROKEN chain, EIS drop, and SLA/OAI impact.  
+- Download JSON export and copy hashes to show exact divergence; relate to Status Legend colors.
+
+### Scenario 3: Scalability (benchmark + simulated research graphs)
+- Run Benchmark with a small N/M to plot CVL vs total events (capped); look for slope/ outliers.  
+- Open Simulation Lab and generate Small/Medium to explain modeled CVL log-scale and EIS vs tamper curves.  
+- Tie back to Dashboard research tiles to show why the paper-style charts align with live metrics.
+
+## What to explain to the panel (talk track)
+- **Canonical payload + deterministic hashing:** canonical JSON → SHA256(prev_hash → chain), GENESIS for first link.  
+- **Anchoring backend + fabric_stub log:** sqlite backend by default, swap-in Fabric via `GRIEVTRACK_LEDGER_BACKEND`; anchored transactions mirrored at `fabric_stub/anchored_log.jsonl`.  
+- **Chain validation + deletion/insertion detection:** recompute hashes, check prev_hash continuity, and flag missing ledger/off-chain to detect modify/delete/insert/reorder attempts.  
+- **Metrics definitions:** EIS (integrity%), CVL (verify latency ms), OAI (accountability), ACI (anchoring completeness anchored/total × 100), TRT (submit → closed hours).  
+- **Why charts match research:** dashboard tiles use live ledger/event scans; Simulation Lab uses modeled curves anchored on the same metric formulas for defense talking points.
+
+## Common questions & answers
+- **Why not real Fabric?** Modular backend keeps Fabric optional; the stub mimics ledger anchoring and writes to JSONL. Roadmap: plug Fabric client + chaincode (`AnchorHash`, `GetHash`) without changing the app surface.  
+- **Why no audit history table?** Design is constrained to 3 tables; audit runs live in session memory and exportable JSON. Use Reset to clear, Benchmark/Simulation Lab for reproducible reruns.
+
 ## Getting good graphs quickly
 - Use **Seed demo data** (`/seed`) to append a curated dataset: 10 complaints across Infrastructure/Sanitation/Water/Safety/Electricity, officers OFF001–OFF005, realistic SLA timings (within + delayed), plus a tampered event and one missing-ledger follow-up so integrity charts are not flat.
 - The dashboard shows a prompt when empty—click **Seed demo data** to light up charts and tables immediately. Demo badge appears while seeded data is present (citizen IDs prefixed `demo-`).
@@ -41,44 +77,6 @@ export GRIEVTRACK_LEDGER_BACKEND=fabric_stub  # default is sqlite
 - Reset clears the seeded rows, ledger anchors, anchored log, and in-memory audit/research/benchmark runs in one click.
 - Seed payload keeps the tampered and missing-ledger examples so audit charts are never empty.
 - Audit JSON export stays aligned with the on-screen table; hashes are copyable for inspectors.
-
-### Teacher-ready demo scenarios
-- **Scenario A (seeded pulse):** Seed → Dashboard → Audit one seeded complaint to highlight mixed integrity (tamper + missing-ledger visible in Integrity Breakdown and Audit table).
-- **Scenario B (hands-on tamper):** Pick any complaint → Timeline to review chain → Audit verify → use **Simulate tamper/Attacks** → re-verify to show EIS drop, chain BROKEN, and hash mismatches.
-- **Scenario C (performance note):** Run **Benchmark** with a small N/M → show CVL trend and capped synthetic anchors; relate back to Dashboard audit tiles.
-
-## UI walkthrough scenarios (what to click + what to say)
-Script these three in order; they line up with the dashboard, audit, and research visuals.
-
-### Scenario 1: Happy path demo (submit → update → timeline → audit → dashboard)
-1. Click **Submit** → fill fields (or use “Use sample demo values”) → submit.
-2. Click **Update** → paste complaint_id → set ASSIGNED → IN_PROGRESS → CLOSED.
-3. Open **Timeline** with the same complaint_id to show chained events.
-4. Run **Audit** → Verify to show EIS 100, chain status OK, ACI anchored, TRT value, and copy the complaint_id.
-5. Go to **Dashboard** → point at Research Analytics cards (integrity breakdown, OAI histogram, TRT by priority, CVL history).
-Explain: “Each event is canonicalized and chained to the previous hash (GENESIS for first), anchored in the ledger backend; Audit recomputes and proves immutability while dashboard rolls up integrity and accountability.”
-
-### Scenario 2: Tamper detection demo (audit → simulate tamper → verify)
-1. In **Audit**, enter complaint_id → click **Simulate tamper**.
-2. Click **Verify** again.
-3. Call out the Metric Engine: EIS drop, chain status BROKEN, tampered count, missing counts, and SLA violations (if any).
-4. Scroll to the verification table: TAMPERED badge, recomputed hash vs ledger hash, copy hashes with the clipboard buttons.
-5. Download JSON to show the new export payload including status counts, ACI, and chart data.
-Explain: “Off-chain edits diverge from the anchored hash, so recomputation flags TAMPERED; prev-hash continuity breaks, and the report records the exact mismatch counts.”
-
-### Scenario 3: Research graphs demo (/research simulation lab)
-1. Click **Simulation Lab** (navbar) → pick Small/Medium → **Generate simulation**.
-2. Narrate the two plots: CVL scalability on log scale (anchored vs pure cloud) and EIS vs tamper rate (anchored degrades slower).
-3. Scroll to run history showing capped event arrays and modeled seconds; export JSON to demonstrate non-persistent research runs.
-4. Return to **Dashboard** to relate Research Analytics (integrity breakdown, OAI histogram, TRT by priority, CVL history) back to live data.
-Explain: “These are deterministic, capped simulations modeled from the current CVL baseline—paper-style visuals without mutating the DB schema.”
-
-## What to explain to the panel
-- Canonical hashing: payload → deterministic JSON → SHA256(prev_hash → chain), GENESIS for first link.
-- Ledger anchoring: anchored via sqlite backend or Fabric stub JSONL; tx log lives in `fabric_stub/anchored_log.jsonl`.
-- Chain verification: recompute hashes + prev_hash continuity to mimic blockchain immutability; chain_status shows OK/BROKEN/LEGACY.
-- Metrics: EIS (integrity%), CVL (verify latency ms), OAI (accountability), ACI (anchoring completeness anchored/total × 100).
-- Research simulations: CVL scalability and EIS vs tamper are modeled (not DB-heavy), bounded arrays for speed; dashboard research charts use live complaint/ledger scans.
 
 ## Screenshot checklist
 - Dashboard: summary tiles + Research Analytics quad (integrity pie/bar, OAI histogram, TRT by priority, CVL history).

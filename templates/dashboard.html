@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% import "_components.html" as ui %}
+
 {% block title %}Dashboard | GrievTrack{% endblock %}
 
 {% block content %}
@@ -126,18 +128,58 @@
             <div class="chart-block">
                 <p class="small muted">Integrity breakdown (all complaints)</p>
                 <div class="chart-box short"><canvas id="integrityBreakdownResearch"></canvas></div>
+                {{ ui.chart_caption(
+                    "What this graph tells",
+                    "Share of events that recompute to the anchored hash versus tampered or missing links in this snapshot.",
+                    "EIS = matched_events / (ledger_events + offchain_events) × 100",
+                    [
+                        "Green near 100% means hashes align; red slices flag tamper simulations.",
+                        "Amber slices mean missing ledger or off-chain anchors—rerun Audit to locate the gap.",
+                        "Drops in EIS imply integrity debt; expect recovery after fixes."
+                    ]
+                ) }}
             </div>
             <div class="chart-block">
                 <p class="small muted">OAI distribution (officers)</p>
                 <div class="chart-box short"><canvas id="oaiHistogram"></canvas></div>
+                {{ ui.chart_caption(
+                    "What this graph tells",
+                    "How accountability scores spread across officers; delays push scores left because SLA misses are penalized.",
+                    "OAI = (within_sla / assigned × 100) − 2 × delayed",
+                    [
+                        "Tall bars on the right mean officers close cases within SLA.",
+                        "Low or negative scores come from repeated delays—priorities with stricter SLAs drop faster.",
+                        "Use this to pick an officer to audit when you see heavy left-tail density."
+                    ]
+                ) }}
             </div>
             <div class="chart-block">
                 <p class="small muted">TRT by priority</p>
                 <div class="chart-box short"><canvas id="trtByPriorityResearch"></canvas></div>
+                {{ ui.chart_caption(
+                    "What this graph tells",
+                    "Average time-to-resolution grouped by complaint priority in this snapshot.",
+                    "TRT = closed_timestamp − submit_timestamp (hours)",
+                    [
+                        "High priority should stay far lower than low/medium; spikes signal SLA risk.",
+                        "Rising bars mean backlog or slow closures—check officer assignments.",
+                        "Compare to OAI: delayed officers often drive high TRT for high priority."
+                    ]
+                ) }}
             </div>
             <div class="chart-block">
                 <p class="small muted">CVL history</p>
                 <div class="chart-box short"><canvas id="cvlHistoryResearch"></canvas></div>
+                {{ ui.chart_caption(
+                    "What this graph tells",
+                    "Verification latency (CVL) trend for recent audit runs in this session or modeled dataset.",
+                    "CVL = audit_runtime_ms_per_complaint",
+                    [
+                        "Lower lines mean faster chain verification; spikes hint at heavier chains.",
+                        "If CVL grows while EIS stays high, integrity is fine but performance is drifting.",
+                        "Pair with Benchmark to see whether larger synthetic chains behave similarly."
+                    ]
+                ) }}
             </div>
         </div>
     </div>
@@ -201,6 +243,16 @@
                     <div class="chart-box"><canvas id="cvlTrend"></canvas></div>
                 </div>
             </div>
+            {{ ui.chart_caption(
+                "What this graph tells",
+                "Recent audit runs in this session: integrity (EIS) should hug 100 while verification latency (CVL) should stay low.",
+                "EIS = matched_events / total_events × 100; CVL = audit_runtime_ms_per_complaint",
+                [
+                    "EIS dips right after tamper simulations or missing anchors—re-run after fixes to confirm recovery.",
+                    "CVL spikes often mean larger chains or slower backend; Benchmark helps compare.",
+                    "Stable, flat lines mean the ledger and chain logic are behaving consistently."
+                ]
+            ) }}
         </div>
     </div>
 
@@ -215,6 +267,16 @@
             </div>
             <p class="chart-note">{{ chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" }}</p>
             <div class="chart-box"><canvas id="trtByPriority"></canvas></div>
+            {{ ui.chart_caption(
+                "What this graph tells",
+                "Average time-to-resolution for live complaints grouped by priority.",
+                "TRT = closed_timestamp − submit_timestamp (hours)",
+                [
+                    "High-priority cases should close fastest—watch for any bar creeping above 24h.",
+                    "Medium should stay within roughly a week; low priority can be longer but not exploding.",
+                    "Spikes indicate backlog or stalled officers; use Audit or Timeline to see why."
+                ]
+            ) }}
         </div>
         <div class="card">
             <div class="section-title">
@@ -226,6 +288,16 @@
             </div>
             <p class="chart-note">{{ chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" }}</p>
             <div class="chart-box"><canvas id="integrityBreakdown"></canvas></div>
+            {{ ui.chart_caption(
+                "What this graph tells",
+                "Live breakdown of verified vs tampered vs missing links across all complaints in the database.",
+                "EIS = matched_events / (ledger_events + offchain_events) × 100",
+                [
+                    "Green MATCH dominates when hashes recompute cleanly; red means hash mismatches were found.",
+                    "Amber slices mean missing ledger anchors or off-chain events—usually from delete/insert anomalies.",
+                    "EIS dropping below ~95% warrants an Audit on the highlighted complaints."
+                ]
+            ) }}
         </div>
     </div>
 
@@ -239,6 +311,16 @@
             </div>
         <p class="chart-note">{{ chart_data.meta.snapshot_label if chart_data.meta else "Computed from current DB snapshot" }}{% if demo_seeded %} · Demo dataset loaded{% endif %}</p>
         <div class="chart-box"><canvas id="slaByOfficer"></canvas></div>
+        {{ ui.chart_caption(
+            "What this graph tells",
+            "Counts of events handled within SLA versus delayed for each officer; a quick way to spot accountability gaps.",
+            "Within SLA / Delayed counts feed OAI = (within_sla / assigned × 100) − 2 × delayed",
+            [
+                "Blue bars should dominate; tall red bars mean that officer is accumulating SLA violations.",
+                "Use this to choose which officer/complaint to audit or coach next.",
+                "If both bars are low, the officer may have few assignments—cross-check OAI distribution."
+            ]
+        ) }}
     </div>
 </section>
 

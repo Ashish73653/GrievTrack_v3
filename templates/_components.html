@@ -1,0 +1,23 @@
+{% macro chart_caption(title, description, formula, bullets) -%}
+<div class="chart-caption">
+    {% if title %}<p class="caption-title">{{ title }}</p>{% endif %}
+    {% if description %}<p class="caption-body">{{ description }}</p>{% endif %}
+    {% if formula %}<p class="caption-formula"><strong>Metric:</strong> {{ formula }}</p>{% endif %}
+    {% if bullets %}
+    <ul class="caption-list">
+        {% for bullet in bullets %}
+        <li>{{ bullet }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro status_legend() -%}
+<div class="status-legend">
+    <span class="legend-item"><span class="dot"></span><span class="legend-label success">MATCH</span></span>
+    <span class="legend-item"><span class="dot warn"></span><span class="legend-label warn">Missing ledger/off-chain</span></span>
+    <span class="legend-item"><span class="dot danger"></span><span class="legend-label danger">TAMPERED</span></span>
+    <span class="legend-item"><span class="dot purple"></span><span class="legend-label purple">Chain BROKEN/LEGACY</span></span>
+</div>
+{%- endmacro %}
