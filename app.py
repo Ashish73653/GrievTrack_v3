@@ -21,6 +21,7 @@ from utils import (
 
 app = Flask(__name__)
 AUDIT_HISTORY: List[Dict] = []
+RESEARCH_RUNS: List[Dict] = []
 MAX_BENCHMARK_COMPLAINTS = 20
 MAX_BENCHMARK_EVENTS = 6
 
@@ -110,6 +111,22 @@ def _compute_aci(events: List[Dict], ledger_map: Dict[str, str]) -> Dict:
     anchored = sum(1 for event in events if event["event_id"] in ledger_map)
     score = round((anchored / total) * 100, 2) if total else 0.0
     return {"score": score, "anchored": anchored, "total": total}
+
+
+def _bucket_oai_scores(scores: List[float]) -> Dict:
+    bins = list(range(0, 101, 10))
+    labels: List[str] = []
+    values: List[int] = []
+    for start in bins[:-1]:
+        end = start + 10
+        labels.append(f"{start}-{end}")
+        upper_inclusive = end == 100
+        count = 0
+        for score in scores:
+            if (score >= start) and (score <= end if upper_inclusive else score < end):
+                count += 1
+        values.append(count)
+    return {"labels": labels, "values": values}
 
 
 def _latest_ledger_hash(cursor, complaint_id: str) -> Optional[str]:
@@ -348,6 +365,7 @@ def _build_dashboard_data() -> Dict:
     )
 
     officer_rows = []
+    officer_oai_scores: List[float] = []
     for officer_id, stats in sorted(officer_stats.items()):
         avg_hours = (
             round(stats["total_hours"] / stats["duration_samples"], 2)
@@ -360,6 +378,7 @@ def _build_dashboard_data() -> Dict:
             if stats["assigned_count"]
             else 0.0
         )
+        score = round(oai_score, 2)
         officer_rows.append(
             {
                 "officer_id": officer_id,
@@ -367,9 +386,10 @@ def _build_dashboard_data() -> Dict:
                 "within_sla_count": stats["within_sla_count"],
                 "delayed_count": stats["delayed_count"],
                 "avg_response_hours": avg_hours,
-                "oai_score": round(oai_score, 2),
+                "oai_score": score,
             }
         )
+        officer_oai_scores.append(score)
 
     cvl_values = [
         run.get("summary", {}).get("cvl_ms", 0) for run in AUDIT_HISTORY if run.get("summary")
@@ -420,6 +440,13 @@ def _build_dashboard_data() -> Dict:
     chart_data["integrity_breakdown"] = {
         "labels": list(integrity_breakdown.keys()),
         "values": list(integrity_breakdown.values()),
+    }
+    chart_data["oai_histogram"] = _bucket_oai_scores(officer_oai_scores)
+    chart_data["research"] = {
+        "integrity_breakdown": chart_data["integrity_breakdown"],
+        "oai_histogram": chart_data["oai_histogram"],
+        "trt_by_priority": chart_data["trt_by_priority"],
+        "cvl_history": chart_data["cvl"],
     }
 
     global_aci_avg = round(sum(aci_scores) / len(aci_scores), 2) if aci_scores else 0.0
@@ -476,6 +503,7 @@ def _clear_system_state() -> Dict:
         conn.commit()
 
     AUDIT_HISTORY.clear()
+    RESEARCH_RUNS.clear()
     log_path = _fabric_log_path()
     log_cleared = False
     if log_path.exists():
@@ -621,6 +649,51 @@ def _run_benchmark(complaint_count: int, events_per_complaint: int) -> Dict:
         "avg_cvl_ms": round(sum(cvls) / len(cvls), 2) if cvls else 0.0,
         "max_cvl_ms": max(cvls) if cvls else 0,
         "chart": chart_points,
+    }
+
+
+def _baseline_cvl_seconds() -> float:
+    cvl_ms_values = [
+        run.get("summary", {}).get("cvl_ms", 0.0) for run in AUDIT_HISTORY if run.get("summary")
+    ]
+    if cvl_ms_values:
+        return max(0.05, round(sum(cvl_ms_values) / len(cvl_ms_values) / 1000, 3))
+    return 0.08
+
+
+def _generate_simulation_run(dataset_size: str = "small") -> Dict:
+    size_key = (dataset_size or "small").lower()
+    event_scales = [100, 500, 1000, 2500] if size_key == "small" else [100, 500, 1000, 2500, 5000, 10000]
+    base_cvl_seconds = _baseline_cvl_seconds()
+    anchored: List[float] = []
+    pure_cloud: List[float] = []
+
+    for events in event_scales:
+        scale = max(1, events / 100)
+        anchored.append(round(base_cvl_seconds * (scale ** 0.9), 3))
+        pure_cloud.append(round(base_cvl_seconds * 1.5 * (scale ** 1.05), 3))
+
+    tamper_rates = [0, 5, 10, 20]
+    anchored_eis = [round(99 - rate * 0.35, 2) for rate in tamper_rates]
+    pure_cloud_eis = [round(96 - rate * 0.75, 2) for rate in tamper_rates]
+
+    run_id = len(RESEARCH_RUNS) + 1
+    return {
+        "run_id": run_id,
+        "dataset_size": size_key,
+        "timestamp": now_iso(),
+        "cvl_scalability": {
+            "events": event_scales,
+            "anchored_seconds": anchored,
+            "pure_cloud_seconds": pure_cloud,
+            "notes": "Modeled curves using anchored verification baseline; displayed on log scale.",
+        },
+        "eis_vs_tamper": {
+            "tamper_rates": tamper_rates,
+            "anchored_eis": anchored_eis,
+            "pure_cloud_eis": pure_cloud_eis,
+            "notes": "Deterministic simulation of tamper tolerance (anchored vs pure cloud).",
+        },
     }
 
 
@@ -836,6 +909,11 @@ def _verify_complaint(complaint_id: str, action: str) -> Dict:
     oai = _compute_oai(complaint, events)
     aci = _compute_aci([dict(e) for e in events], ledger_by_event)
     trt_hours = _compute_trt([dict(e) for e in events])
+    sla_violation_count = 1 if oai.get("status") == "DELAYED" else 0
+
+    trend_labels = [f"Run {run['run_id']}" for run in AUDIT_HISTORY] + [f"Run {len(AUDIT_HISTORY)+1}"]
+    trend_cvl = [run.get("summary", {}).get("cvl_ms", 0.0) for run in AUDIT_HISTORY] + [cvl_ms]
+    trend_eis = [run.get("summary", {}).get("eis_score", 0.0) for run in AUDIT_HISTORY] + [eis_score]
 
     run_data = {
         "run_id": len(AUDIT_HISTORY) + 1,
@@ -855,8 +933,23 @@ def _verify_complaint(complaint_id: str, action: str) -> Dict:
             "order_anomalies": order_anomalies,
             "aci": aci,
             "trt_hours": trt_hours,
+            "sla_violations": sla_violation_count,
+            "tampered_events": status_counts.get("TAMPERED", 0),
+            "missing_ledger": status_counts.get("MISSING_LEDGER", 0),
+            "missing_offchain": status_counts.get("MISSING_OFFCHAIN", 0),
         },
         "timestamp": now_iso(),
+        "research_charts": {
+            "status_breakdown": {
+                "labels": list(status_counts.keys()),
+                "values": list(status_counts.values()),
+            },
+            "trends": {
+                "labels": trend_labels,
+                "eis": trend_eis,
+                "cvl": trend_cvl,
+            },
+        },
     }
     AUDIT_HISTORY.append(run_data)
     return run_data
@@ -871,6 +964,31 @@ def index():
 def dashboard():
     dashboard_data = _build_dashboard_data()
     return render_template("dashboard.html", **dashboard_data)
+
+
+@app.route("/research", methods=["GET", "POST"])
+def research():
+    dataset_size = request.form.get("dataset_size", "small")
+    if request.method == "POST" or not RESEARCH_RUNS:
+        RESEARCH_RUNS.append(_generate_simulation_run(dataset_size))
+    latest_run = RESEARCH_RUNS[-1] if RESEARCH_RUNS else None
+    return render_template(
+        "research.html",
+        run=latest_run,
+        research_runs=RESEARCH_RUNS,
+    )
+
+
+@app.route("/research/export")
+def research_export():
+    if not RESEARCH_RUNS:
+        RESEARCH_RUNS.append(_generate_simulation_run("small"))
+    run = RESEARCH_RUNS[-1]
+    filename = f"simulation-{run['run_id']}-{run['dataset_size']}.json"
+    payload = json.dumps(run, indent=2)
+    response = Response(payload, mimetype="application/json")
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
 
 
 @app.route("/submit", methods=["GET", "POST"])
@@ -1198,7 +1316,16 @@ def audit_report():
         return {"error": "Audit run not found."}, 404
 
     filename = f"audit-{run['complaint_id']}-{run['run_id']}.json"
-    payload = json.dumps(run, indent=2)
+    report_payload = json.loads(json.dumps(run))
+    snapshot = _build_dashboard_data()
+    report_payload["dashboard_snapshot"] = {
+        "integrity_breakdown": snapshot.get("integrity_breakdown", {}),
+        "oai_histogram": snapshot.get("chart_data", {}).get("oai_histogram", {}),
+        "trt_by_priority": snapshot.get("chart_data", {}).get("trt_by_priority", {}),
+        "cvl_history": snapshot.get("chart_data", {}).get("cvl", {}),
+        "integrity_summary": snapshot.get("integrity_summary", {}),
+    }
+    payload = json.dumps(report_payload, indent=2)
     response = Response(payload, mimetype="application/json")
     response.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return response

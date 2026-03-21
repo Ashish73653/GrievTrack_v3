@@ -52,8 +52,8 @@
     <div class="card">
         <div class="section-title">
             <div>
-                <h3>Metrics</h3>
-                <p class="muted small">EIS, CVL, and chain continuity for this run.</p>
+                <h3>Metric engine</h3>
+                <p class="muted small">EIS, CVL, ACI, and chain continuity for this verification run.</p>
             </div>
             <div class="actions print-hide">
                 <button class="btn btn-ghost" data-print>Print report</button>
@@ -99,6 +99,11 @@
                 {% endif %}
             </div>
             <div class="metric-tile">
+                <h4>Complaint ID</h4>
+                <p class="big mono">{{ audit_result.complaint_id }}</p>
+                <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ audit_result.complaint_id }}">Copy ID</button>
+            </div>
+            <div class="metric-tile">
                 <h4>Run</h4>
                 <p class="big">#{{ audit_result.run_id }}</p>
                 <p class="muted small">{{ audit_result.timestamp }}</p>
@@ -114,6 +119,70 @@
             </ul>
         </div>
         {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="section-title">
+            <div>
+                <h3>Audit report dashboard</h3>
+                <p class="muted small">Counts that align with export payload and research graphs.</p>
+            </div>
+            {% if latest_run_id is not none %}
+            <a class="btn btn-ghost" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Export JSON</a>
+            {% endif %}
+        </div>
+        <div class="summary-grid mini">
+            <div class="summary-card">
+                <div class="icon" aria-hidden="true" style="background:#fef3c7;color:#92400e;box-shadow:inset 0 0 0 1px #fcd34d;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2 3 7v7c0 5 4 8 9 8s9-3 9-8V7z"></path>
+                        <path d="M12 8v4"></path><circle cx="12" cy="16" r="1"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <p class="label">SLA violations</p>
+                    <p class="value">{{ audit_result.summary.sla_violations }}</p>
+                    <p class="small muted">OAI delayed transitions</p>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="icon" aria-hidden="true" style="background:#fef2f2;color:#dc2626;box-shadow:inset 0 0 0 1px #fecdd3;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2 3 7v7c0 5 4 8 9 8s9-3 9-8V7z"></path>
+                        <path d="M12 8v4"></path><circle cx="12" cy="16" r="1"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <p class="label">Tampered events</p>
+                    <p class="value">{{ audit_result.summary.tampered_events }}</p>
+                    <p class="small muted">Hash mismatches</p>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="icon" aria-hidden="true" style="background:#e0f2fe;color:#0b5394;box-shadow:inset 0 0 0 1px #bae6fd;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18"></path><path d="M3 6h18"></path><path d="M3 18h18"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="label">Missing ledger</p>
+                    <p class="value">{{ audit_result.summary.missing_ledger }}</p>
+                    <p class="small muted">Anchors absent</p>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="icon" aria-hidden="true" style="background:#f5f3ff;color:#5b21b6;box-shadow:inset 0 0 0 1px #ddd6fe;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 7h16"></path><path d="M4 12h10"></path><path d="M4 17h6"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="label">Missing off-chain</p>
+                    <p class="value">{{ audit_result.summary.missing_offchain }}</p>
+                    <p class="small muted">Ledger > events</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="card">
