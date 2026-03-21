@@ -13,23 +13,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const copyButtons = document.querySelectorAll("[data-copy-text]");
   copyButtons.forEach((button) => {
-    const originalLabel = button.textContent;
+    const originalLabel = button.innerHTML;
+    const isBtnStyled = button.classList.contains("btn");
     button.addEventListener("click", async () => {
       const text = button.getAttribute("data-copy-text");
       if (!text) return;
       try {
         await navigator.clipboard.writeText(text);
-        button.textContent = "Copied";
-        button.classList.add("btn-primary");
+        button.innerHTML = "Copied";
+        if (isBtnStyled) {
+          button.classList.add("btn-primary");
+        }
         createToast("Copied to clipboard", "success");
         setTimeout(() => {
-          button.textContent = originalLabel;
-          button.classList.remove("btn-primary");
+          button.innerHTML = originalLabel;
+          if (isBtnStyled) {
+            button.classList.remove("btn-primary");
+          }
         }, 1200);
       } catch (err) {
-        button.textContent = "Copy failed";
+        button.innerHTML = "Copy failed";
         createToast("Copy failed", "error");
-        setTimeout(() => (button.textContent = originalLabel), 1200);
+        setTimeout(() => (button.innerHTML = originalLabel), 1200);
       }
     });
   });

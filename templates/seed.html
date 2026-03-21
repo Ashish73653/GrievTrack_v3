@@ -19,9 +19,26 @@
     {% if error %}
     <div class="alert error">{{ error }}</div>
     {% endif %}
+    {% if already_seeded and not seeded %}
+    <div class="alert success">
+        <div><strong>Demo dataset already present.</strong> Seeding again will not create duplicates.</div>
+        <p class="small muted">Current totals · Complaints: {{ complaint_summary.total }} · Events: {{ integrity_summary.total_events }} · Anchors: {{ integrity_summary.global_aci }}% anchored</p>
+        <div class="actions">
+            <a class="btn btn-primary" href="{{ url_for('dashboard') }}">Go to dashboard</a>
+            <a class="btn btn-secondary" href="{{ url_for('reset') }}">Reset database</a>
+        </div>
+    </div>
+    {% endif %}
     {% if seeded %}
     <div class="alert success">
-        <div><strong>Demo data loaded.</strong> Inserted {{ seeded.inserted }} complaints with chained events.</div>
+        <div><strong>{{ seed_message or "Demo dataset ready." }}</strong></div>
+        <p class="small muted">Complaints: {{ seeded.inserted.complaints }} · Events: {{ seeded.inserted.events }} · Anchors: {{ seeded.inserted.anchors }}</p>
+        {% if seeded.already_seeded %}
+        <div class="actions">
+            <span class="badge badge-neutral">No new rows added</span>
+            <a class="btn btn-primary" href="{{ url_for('dashboard') }}">Go to dashboard</a>
+        </div>
+        {% endif %}
         {% if seeded.tampered %}
         <div>Integrity hint: one seeded complaint was tampered to showcase detection.</div>
         {% endif %}
@@ -123,7 +140,7 @@
         </div>
         <form method="post" class="actions">
             <button class="btn btn-primary" type="submit">Seed demo data</button>
-            <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Cancel</a>
+            <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Go to dashboard</a>
         </form>
     </div>
 </section>

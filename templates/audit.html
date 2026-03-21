@@ -19,10 +19,15 @@
     <div class="card">
         <div class="section-title">
             <div>
-                <h3>Input panel</h3>
-                <p class="muted small">Provide a complaint_id to verify the ledger chain or simulate tampering.</p>
+                <h3>Audit controls</h3>
+                <p class="muted small">Provide a complaint_id to verify the ledger chain, simulate tampering, or export the latest run.</p>
             </div>
-            <span class="badge-neutral">Step 3 of 3</span>
+            <div class="actions print-hide">
+                {% if latest_run_id is not none %}
+                <a class="btn btn-ghost btn-xs" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Download JSON</a>
+                {% endif %}
+                <button class="btn btn-secondary btn-xs" type="button" data-print>Print</button>
+            </div>
         </div>
         <form method="post" class="form">
             <div class="form-grid">
@@ -35,9 +40,7 @@
             <div class="actions">
                 <button class="btn btn-primary" type="submit" name="action" value="verify">Verify</button>
                 <button class="btn btn-secondary" type="submit" name="action" value="tamper">Simulate tamper</button>
-                {% if latest_run_id is not none %}
-                <a class="btn btn-ghost" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Download JSON</a>
-                {% endif %}
+                <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Go to dashboard</a>
             </div>
         </form>
         {% if error %}
@@ -53,16 +56,11 @@
         <div class="section-title">
             <div>
                 <h3>Metric engine</h3>
-                <p class="muted small">EIS, CVL, ACI, and chain continuity for this verification run.</p>
+                <p class="muted small">EIS, CVL, OAI, ACI, and chain continuity for this verification run.</p>
             </div>
-            <div class="actions print-hide">
-                <button class="btn btn-ghost" data-print>Print report</button>
-                {% if latest_run_id is not none %}
-                <a class="btn btn-secondary" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Download JSON</a>
-                {% endif %}
-            </div>
+            <span class="badge-neutral">Run #{{ audit_result.run_id }}</span>
         </div>
-        <div class="metric-strip">
+        <div class="metric-strip metric-dense">
             {% set chain_class = 'badge-success' if audit_result.summary.chain_status in ['OK','LEGACY'] else 'badge-danger' %}
             <div class="metric-tile">
                 <h4>EIS</h4>
@@ -85,11 +83,6 @@
                 <p class="muted small">{{ audit_result.summary.aci.anchored }}/{{ audit_result.summary.aci.total }} anchored</p>
             </div>
             <div class="metric-tile">
-                <h4>TRT (h)</h4>
-                <p class="big">{{ audit_result.summary.trt_hours if audit_result.summary.trt_hours is not none else "—" }}</p>
-                <p class="muted small">Submit → Closed</p>
-            </div>
-            <div class="metric-tile">
                 <h4>OAI</h4>
                 <p class="big">{{ audit_result.summary.oai.status }}</p>
                 {% if audit_result.summary.oai.duration_hours %}
@@ -99,39 +92,22 @@
                 {% endif %}
             </div>
             <div class="metric-tile">
+                <h4>TRT (h)</h4>
+                <p class="big">{{ audit_result.summary.trt_hours if audit_result.summary.trt_hours is not none else "—" }}</p>
+                <p class="muted small">Submit → Closed</p>
+            </div>
+            <div class="metric-tile">
                 <h4>Complaint ID</h4>
                 <p class="big mono">{{ audit_result.complaint_id }}</p>
                 <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ audit_result.complaint_id }}">Copy ID</button>
             </div>
             <div class="metric-tile">
-                <h4>Run</h4>
+                <h4>Run time</h4>
                 <p class="big">#{{ audit_result.run_id }}</p>
                 <p class="muted small">{{ audit_result.timestamp }}</p>
             </div>
         </div>
-        {% if status_hints %}
-        <div class="callout warn">
-            <strong>Detected attack hints:</strong>
-            <ul class="muted small">
-                <li>Missing ledger anchors: {{ status_hints.missing_ledger or 0 }} {% if status_hints.missing_ledger %}→ possible INSERT_FAKE_EVENT or DELETE_LEDGER_ANCHOR{% endif %}</li>
-                <li>Missing off-chain events: {{ status_hints.missing_offchain or 0 }} {% if status_hints.missing_offchain %}→ possible DELETE_EVENT{% endif %}</li>
-                <li>Order anomalies: {{ status_hints.order_anomaly or 0 }} {% if status_hints.order_anomaly %}→ possible REORDER_ATTACK{% endif %}</li>
-            </ul>
-        </div>
-        {% endif %}
-    </div>
-
-    <div class="card">
-        <div class="section-title">
-            <div>
-                <h3>Audit report dashboard</h3>
-                <p class="muted small">Counts that align with export payload and research graphs.</p>
-            </div>
-            {% if latest_run_id is not none %}
-            <a class="btn btn-ghost" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Export JSON</a>
-            {% endif %}
-        </div>
-        <div class="summary-grid mini">
+        <div class="summary-grid mini audit-meta">
             <div class="summary-card">
                 <div class="icon" aria-hidden="true" style="background:#fef3c7;color:#92400e;box-shadow:inset 0 0 0 1px #fcd34d;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -183,28 +159,43 @@
                 </div>
             </div>
         </div>
+        {% if status_hints %}
+        <div class="callout warn">
+            <strong>Detected attack hints:</strong>
+            <ul class="muted small">
+                <li>Missing ledger anchors: {{ status_hints.missing_ledger or 0 }} {% if status_hints.missing_ledger %}→ possible INSERT_FAKE_EVENT or DELETE_LEDGER_ANCHOR{% endif %}</li>
+                <li>Missing off-chain events: {{ status_hints.missing_offchain or 0 }} {% if status_hints.missing_offchain %}→ possible DELETE_EVENT{% endif %}</li>
+                <li>Order anomalies: {{ status_hints.order_anomaly or 0 }} {% if status_hints.order_anomaly %}→ possible REORDER_ATTACK{% endif %}</li>
+            </ul>
+        </div>
+        {% endif %}
     </div>
 
     <div class="card">
         <div class="section-title">
             <div>
                 <h3 class="table-title">Verification results</h3>
-                <p class="table-subtitle">Status badges indicate MATCH, TAMPERED, or ledger gaps.</p>
+                <p class="table-subtitle">Hash proof, chain continuity, and actor context in a scrollable view.</p>
             </div>
-            <span class="badge-neutral">Hash-level detail</span>
+            <div class="actions print-hide">
+                {% if latest_run_id is not none %}
+                <a class="btn btn-ghost btn-xs" href="{{ url_for('audit_report', run_id=latest_run_id) }}">Download JSON</a>
+                {% endif %}
+                <button class="btn btn-secondary btn-xs" type="button" data-print>Print</button>
+            </div>
         </div>
         <div class="chart-block">
             <p class="small muted">Status breakdown for this complaint</p>
             <div class="chart-box"><canvas id="statusBreakdown"></canvas></div>
         </div>
         <div class="table-wrap">
-            <table class="table">
+            <table class="table audit-table">
                 <thead>
                     <tr>
                         <th>Event</th>
                         <th>Type</th>
                         <th>Actor</th>
-                        <th>Remarks</th>
+                        <th class="remarks-head">Remarks</th>
                         <th>Chain</th>
                         <th>Prev ref</th>
                         <th>Status</th>
@@ -216,22 +207,26 @@
                     {% for event in audit_result.events %}
                     {% set status_class = 'badge-success' if event.status == 'MATCH' else 'badge-danger' if event.status == 'TAMPERED' else 'badge-warn' if event.status in ['MISSING_LEDGER','MISSING_OFFCHAIN','ORDER_ANOMALY'] else 'badge-purple' %}
                     <tr>
-                        <td class="mono">{{ event.event_id }}</td>
+                        <td class="mono tight">{{ event.event_id }}</td>
                         <td><span class="badge badge-neutral">{{ event.event_type }}</span></td>
-                        <td>{{ event.actor_id }}</td>
-                        <td>{{ event.remarks }}</td>
+                        <td class="tight">{{ event.actor_id }}</td>
+                        <td class="remarks">{{ event.remarks }}</td>
                         <td><span class="badge {{ 'badge-success' if event.chain_status == 'OK' else 'badge-purple' if event.chain_status == 'LEGACY' else 'badge-danger' }}">{{ event.chain_status }}</span></td>
-                        <td class="mono small hash" title="{{ event.expected_prev_event_hash }}">{{ event.expected_prev_event_hash }}</td>
+                        <td class="mono hash-clip" title="{{ event.expected_prev_event_hash }}">{{ event.expected_prev_event_hash }}</td>
                         <td><span class="badge {{ status_class }}">{{ event.status }}</span></td>
                         <td class="hash-cell">
-                            <span class="mono hash" title="{{ event.ledger_hash }}">{{ event.ledger_hash or "—" }}</span>
+                            <span class="mono hash-clip" title="{{ event.ledger_hash }}">{{ event.ledger_hash or "—" }}</span>
                             {% if event.ledger_hash %}
-                            <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ event.ledger_hash }}">Copy</button>
+                            <button class="icon-btn" type="button" aria-label="Copy ledger hash" data-copy-text="{{ event.ledger_hash }}">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
                             {% endif %}
                         </td>
                         <td class="hash-cell">
-                            <span class="mono hash" title="{{ event.recomputed_hash }}">{{ event.recomputed_hash }}</span>
-                            <button class="btn btn-ghost btn-xs" type="button" data-copy-text="{{ event.recomputed_hash }}">Copy</button>
+                            <span class="mono hash-clip" title="{{ event.recomputed_hash }}">{{ event.recomputed_hash }}</span>
+                            <button class="icon-btn" type="button" aria-label="Copy recomputed hash" data-copy-text="{{ event.recomputed_hash }}">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -276,7 +271,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const auditHistory = {{ audit_history | tojson | safe }};
-    const statusCounts = {{ audit_result.summary.status_counts | tojson if audit_result else '{}' }};
+    const statusCounts = {{ audit_result.summary.status_counts | tojson if audit_result else 'null' }};
     Chart.defaults.responsive = true;
     Chart.defaults.maintainAspectRatio = false;
     Chart.defaults.plugins.legend.position = "bottom";

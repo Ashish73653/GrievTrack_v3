@@ -88,10 +88,11 @@ main {
 }
 
 .topbar__inner {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    justify-content: space-between;
+    flex-wrap: wrap;
     position: relative;
 }
 
@@ -132,17 +133,16 @@ main {
 .nav {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     width: 100%;
-    overflow: hidden;
 }
 
 .nav-links {
     display: flex;
     gap: 10px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
     padding: 6px 0;
+    justify-content: center;
 }
 
 .nav-link {
@@ -170,6 +170,12 @@ main {
     color: #0f172a;
     background: #ffefba;
     border-color: rgba(0, 0, 0, 0.06);
+}
+
+.nav-cta {
+    display: none;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .nav-toggle {
@@ -345,6 +351,25 @@ main {
     transform: none;
 }
 
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+    color: var(--text);
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.icon-btn:hover,
+.icon-btn:focus {
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+    transform: translateY(-1px);
+}
+
 .chip {
     display: inline-flex;
     align-items: center;
@@ -431,6 +456,10 @@ table {
     min-width: 760px;
 }
 
+.audit-table {
+    min-width: 980px;
+}
+
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -443,6 +472,23 @@ th {
     text-align: left;
     vertical-align: top;
     white-space: nowrap;
+}
+
+.tight {
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.remarks {
+    max-width: 320px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.remarks-head {
+    width: 260px;
 }
 
 .table th {
@@ -765,6 +811,11 @@ textarea {
     gap: 10px;
 }
 
+.metric-strip.metric-dense {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
 .metric-tile {
     padding: 12px;
     border-radius: 12px;
@@ -823,6 +874,14 @@ textarea {
 .hash-cell .hash {
     white-space: nowrap;
     display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hash-clip {
+    display: inline-block;
+    max-width: 220px;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -895,8 +954,7 @@ textarea {
 
 @media (max-width: 900px) {
     .topbar__inner {
-        grid-template-columns: auto auto auto;
-        align-items: center;
+        align-items: flex-start;
     }
     .nav-toggle {
         display: inline-flex;
@@ -905,29 +963,32 @@ textarea {
         position: absolute;
         left: 12px;
         right: 12px;
-        top: 64px;
+        top: 70px;
         background: #0f172a;
         border-radius: 14px;
-        padding: 12px;
+        padding: 14px;
         display: none;
+        flex-direction: column;
+        gap: 12px;
         box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
     }
     .nav.open {
-        display: block;
+        display: flex;
     }
     .nav-links {
         flex-direction: column;
         gap: 8px;
-        overflow: visible;
     }
     .nav-link {
         width: 100%;
         border-color: rgba(255, 255, 255, 0.15);
         justify-content: space-between;
     }
+    .nav-cta {
+        display: flex;
+    }
     .top-actions {
-        grid-column: 1 / -1;
-        justify-content: flex-start;
+        display: none;
     }
     .container {
         padding: 20px 12px;
