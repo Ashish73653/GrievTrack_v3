@@ -260,6 +260,7 @@
         </div>
         <span class="badge-neutral">Live</span>
     </div>
+    <p class="chart-note">Computed from current session snapshot.</p>
     <div class="charts-grid">
         <div class="chart-block">
             <p class="small muted">EIS per run</p>
@@ -276,6 +277,12 @@
 <script>
     const auditHistory = {{ audit_history | tojson | safe }};
     const statusCounts = {{ audit_result.summary.status_counts | tojson if audit_result else '{}' }};
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
+    Chart.defaults.plugins.legend.position = "bottom";
+    Chart.defaults.color = "#0f172a";
+    Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+    Chart.defaults.borderColor = "#e5e7eb";
     if (statusCounts && Object.keys(statusCounts).length) {
         const labels = Object.keys(statusCounts);
         const values = Object.values(statusCounts);
@@ -302,8 +309,9 @@
 
         const commonOptions = {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            scales: { y: { beginAtZero: true, grid: { color: "#e5e7eb" } }, x: { grid: { color: "#e5e7eb" } } }
         };
 
         new Chart(document.getElementById("eisChart").getContext("2d"), {

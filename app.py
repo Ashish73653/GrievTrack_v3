@@ -1,7 +1,7 @@
 import json
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -22,8 +22,10 @@ from utils import (
 app = Flask(__name__)
 AUDIT_HISTORY: List[Dict] = []
 RESEARCH_RUNS: List[Dict] = []
+BENCHMARK_RUNS: List[Dict] = []
 MAX_BENCHMARK_COMPLAINTS = 20
 MAX_BENCHMARK_EVENTS = 6
+DEMO_CITIZEN_PREFIX = "demo-"
 
 
 def _fabric_log_path() -> Path:
@@ -255,6 +257,10 @@ def _build_dashboard_data() -> Dict:
             """
         ).fetchall()
 
+    demo_seeded = any(
+        (complaint["citizen_id"] or "").startswith(DEMO_CITIZEN_PREFIX) for complaint in complaints
+    )
+
     events_by_complaint: Dict[str, List[Dict]] = defaultdict(list)
     for event in events:
         events_by_complaint[event["complaint_id"]].append(dict(event))
@@ -417,13 +423,21 @@ def _build_dashboard_data() -> Dict:
     }
 
     avg_trt_overall = round(trt_hours_total / trt_samples, 2) if trt_samples else 0.0
-    trt_priority_labels = []
-    trt_priority_values = []
-    for priority, stats in sorted(priority_trt.items()):
-        if not stats["count"]:
-            continue
+    trt_priority_labels: List[str] = []
+    trt_priority_values: List[float] = []
+    priority_order = ["HIGH", "MEDIUM", "LOW"]
+    for priority in priority_order:
+        stats = priority_trt.get(priority, {"total": 0.0, "count": 0})
         trt_priority_labels.append(priority)
-        trt_priority_values.append(round(stats["total"] / stats["count"], 2))
+        value = round(stats["total"] / stats["count"], 2) if stats["count"] else 0.0
+        trt_priority_values.append(value)
+    for priority, stats in sorted(priority_trt.items()):
+        normalized = priority.upper()
+        if normalized in priority_order:
+            continue
+        trt_priority_labels.append(normalized)
+        value = round(stats["total"] / stats["count"], 2) if stats["count"] else 0.0
+        trt_priority_values.append(value)
 
     chart_data["trt_by_priority"] = {
         "labels": trt_priority_labels,
@@ -447,6 +461,10 @@ def _build_dashboard_data() -> Dict:
         "oai_histogram": chart_data["oai_histogram"],
         "trt_by_priority": chart_data["trt_by_priority"],
         "cvl_history": chart_data["cvl"],
+    }
+    chart_data["meta"] = {
+        "snapshot_label": "Computed from current DB snapshot",
+        "demo_seeded": demo_seeded,
     }
 
     global_aci_avg = round(sum(aci_scores) / len(aci_scores), 2) if aci_scores else 0.0
@@ -486,6 +504,8 @@ def _build_dashboard_data() -> Dict:
         "audit_summary": audit_summary,
         "officer_oai": officer_rows,
         "chart_data": chart_data,
+        "demo_seeded": demo_seeded,
+        "has_data": bool(total_complaints),
     }
 
 
@@ -504,13 +524,322 @@ def _clear_system_state() -> Dict:
 
     AUDIT_HISTORY.clear()
     RESEARCH_RUNS.clear()
+    BENCHMARK_RUNS.clear()
     log_path = _fabric_log_path()
     log_cleared = False
     if log_path.exists():
         log_path.unlink()
         log_cleared = True
 
-    return {"pre_counts": pre_counts, "log_cleared": log_cleared}
+    return {
+        "pre_counts": pre_counts,
+        "log_cleared": log_cleared,
+        "memory_cleared": {
+            "audit_history": not AUDIT_HISTORY,
+            "research_runs": not RESEARCH_RUNS,
+            "benchmark_runs": not BENCHMARK_RUNS,
+        },
+    }
+
+
+def _has_demo_data() -> bool:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        row = cursor.execute(
+            "SELECT COUNT(*) FROM complaints WHERE citizen_id LIKE ?",
+            (f"{DEMO_CITIZEN_PREFIX}%",),
+        ).fetchone()
+        return bool(row[0])
+
+
+def _insert_unanchored_event(
+    complaint_id: str, event_type: str, actor_id: str, remarks: str, timestamp: str
+) -> str:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        event_id = new_event_id()
+        cursor.execute(
+            """
+            INSERT INTO complaint_events (
+                event_id, complaint_id, event_type, actor_id, remarks, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (event_id, complaint_id, event_type, actor_id, remarks, timestamp),
+        )
+        cursor.execute(
+            "UPDATE complaints SET current_status = ? WHERE complaint_id = ?",
+            (event_type, complaint_id),
+        )
+        conn.commit()
+    return event_id
+
+
+def _seed_demo_dataset() -> Dict:
+    if _has_demo_data():
+        return {"inserted": 0, "skipped": True, "reason": "Demo dataset already present."}
+
+    officers = ["OFF001", "OFF002", "OFF003", "OFF004", "OFF005"]
+    base_time = datetime.now(timezone.utc) - timedelta(days=9)
+
+    scenarios = [
+        {
+            "title": "Bridge pothole slows ambulances",
+            "description": "Large pothole on the main bridge causing lane closures and slow response time.",
+            "category": "Infrastructure",
+            "priority": "HIGH",
+            "citizen_suffix": "ward-bridge",
+            "day_offset": 0,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[0], "remarks": "Routed to roadworks team", "offset_hours": 2},
+                {"type": "IN_PROGRESS", "actor": officers[0], "remarks": "Steel plates installed overnight", "offset_hours": 8},
+                {"type": "CLOSED", "actor": officers[0], "remarks": "Pothole patched and cured", "offset_hours": 22},
+            ],
+        },
+        {
+            "title": "Overflowing waste near school",
+            "description": "Garbage pile-up next to school gate, odor complaints from parents.",
+            "category": "Sanitation",
+            "priority": "MEDIUM",
+            "citizen_suffix": "school-south",
+            "day_offset": 1,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[1], "remarks": "Assigned to sanitation supervisor", "offset_hours": 4},
+                {"type": "IN_PROGRESS", "actor": officers[1], "remarks": "Trucks dispatched for clearance", "offset_hours": 20},
+                {"type": "CLOSED", "actor": officers[1], "remarks": "Site disinfected and bins replaced", "offset_hours": 42},
+            ],
+        },
+        {
+            "title": "Low water pressure in apartments",
+            "description": "Residents report severe pressure drops during peak hours.",
+            "category": "Water",
+            "priority": "HIGH",
+            "citizen_suffix": "block-a",
+            "day_offset": 2,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[2], "remarks": "Water board notified", "offset_hours": 6},
+                {"type": "IN_PROGRESS", "actor": officers[2], "remarks": "Valve replacement scheduled", "offset_hours": 40},
+                {"type": "CLOSED", "actor": officers[2], "remarks": "Line flushed and pressure restored", "offset_hours": 64},
+            ],
+        },
+        {
+            "title": "Street lighting outage near market",
+            "description": "Multiple poles dark around the night market, safety concern.",
+            "category": "Electricity",
+            "priority": "MEDIUM",
+            "citizen_suffix": "market-row",
+            "day_offset": 2,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[3], "remarks": "Escalated to utilities contractor", "offset_hours": 3},
+                {"type": "IN_PROGRESS", "actor": officers[3], "remarks": "Crew on-site replacing fuses", "offset_hours": 18},
+                {"type": "CLOSED", "actor": officers[3], "remarks": "Lighting restored, timer calibrated", "offset_hours": 30},
+            ],
+        },
+        {
+            "title": "Unsafe pedestrian crossing",
+            "description": "Signal timing off near bus depot, pedestrians stranded mid-road.",
+            "category": "Safety",
+            "priority": "LOW",
+            "citizen_suffix": "bus-depot",
+            "day_offset": 3,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[0], "remarks": "Traffic officer notified", "offset_hours": 5},
+                {"type": "IN_PROGRESS", "actor": officers[0], "remarks": "Timing audit scheduled", "offset_hours": 30},
+            ],
+        },
+        {
+            "title": "Drainage choke before monsoon",
+            "description": "Blocked storm drain causing backflow during evening rains.",
+            "category": "Sanitation",
+            "priority": "LOW",
+            "citizen_suffix": "canal-row",
+            "day_offset": 4,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[4], "remarks": "Jetting crew booked", "offset_hours": 6},
+                {"type": "FOLLOW_UP", "actor": officers[4], "remarks": "Awaiting permits from utilities", "offset_hours": 28, "skip_anchor": True},
+                {"type": "IN_PROGRESS", "actor": officers[4], "remarks": "Clearing debris and silt", "offset_hours": 55},
+            ],
+        },
+        {
+            "title": "Transformer hum near homes",
+            "description": "Residents report loud hum and heat from corner transformer.",
+            "category": "Electricity",
+            "priority": "LOW",
+            "citizen_suffix": "sector-5",
+            "day_offset": 5,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[3], "remarks": "Maintenance ticket raised", "offset_hours": 2},
+                {"type": "IN_PROGRESS", "actor": officers[3], "remarks": "Oil level inspection", "offset_hours": 16},
+                {"type": "CLOSED", "actor": officers[3], "remarks": "Noise dampers installed", "offset_hours": 70},
+            ],
+        },
+        {
+            "title": "Broken manhole cover",
+            "description": "Exposed drain opening causing trip hazard outside library.",
+            "category": "Infrastructure",
+            "priority": "MEDIUM",
+            "citizen_suffix": "library-lane",
+            "day_offset": 6,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[2], "remarks": "Barricades placed", "offset_hours": 1},
+                {"type": "IN_PROGRESS", "actor": officers[2], "remarks": "Replacement cover ordered", "offset_hours": 12},
+                {"type": "CLOSED", "actor": officers[2], "remarks": "Cover installed and sealed", "offset_hours": 52},
+            ],
+        },
+        {
+            "title": "Campus security cameras offline",
+            "description": "Safety cameras dropped feed after power surge.",
+            "category": "Safety",
+            "priority": "HIGH",
+            "citizen_suffix": "campus-north",
+            "day_offset": 6,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[1], "remarks": "Routed to digital forensics", "offset_hours": 3},
+                {"type": "IN_PROGRESS", "actor": officers[1], "remarks": "Switch reset, new firmware", "offset_hours": 32},
+                {"type": "CLOSED", "actor": officers[1], "remarks": "Uptime restored, surge guard added", "offset_hours": 60},
+            ],
+        },
+        {
+            "title": "Contaminated tap reports",
+            "description": "Murky water reported after pipeline repair.",
+            "category": "Water",
+            "priority": "MEDIUM",
+            "citizen_suffix": "ward-9",
+            "day_offset": 7,
+            "events": [
+                {"type": "ASSIGNED", "actor": officers[0], "remarks": "Water testing unit alerted", "offset_hours": 4},
+                {"type": "IN_PROGRESS", "actor": officers[0], "remarks": "Flushing line and taking samples", "offset_hours": 18},
+                {"type": "CLOSED", "actor": officers[0], "remarks": "Chlorination completed", "offset_hours": 40},
+            ],
+        },
+    ]
+
+    seeded_ids: List[str] = []
+    tampered: Optional[str] = None
+    missing_event: Optional[str] = None
+
+    for scenario in scenarios:
+        created_at = base_time + timedelta(days=scenario.get("day_offset", 0))
+        created_ts = created_at.replace(microsecond=0).isoformat()
+
+        complaint_id = new_complaint_id()
+        citizen_id = f"{DEMO_CITIZEN_PREFIX}{scenario['citizen_suffix']}"
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO complaints (
+                    complaint_id, title, description, category, priority, citizen_id,
+                    current_status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    complaint_id,
+                    scenario["title"],
+                    scenario["description"],
+                    scenario["category"],
+                    scenario["priority"],
+                    citizen_id,
+                    "SUBMIT",
+                    created_ts,
+                ),
+            )
+            submit_event_id = new_event_id()
+            cursor.execute(
+                """
+                INSERT INTO complaint_events (
+                    event_id, complaint_id, event_type, actor_id, remarks, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    submit_event_id,
+                    complaint_id,
+                    "SUBMIT",
+                    citizen_id,
+                    "Complaint submitted (demo seed)",
+                    created_ts,
+                ),
+            )
+            conn.commit()
+
+        submit_payload = canonical_event_payload(
+            complaint_id=complaint_id,
+            event_id=submit_event_id,
+            event_type="SUBMIT",
+            actor_id=citizen_id,
+            remarks="Complaint submitted (demo seed)",
+            timestamp=created_ts,
+            prev_event_hash="GENESIS",
+        )
+        submit_hash = sha256(canonical_json(submit_payload))
+        get_ledger_backend().anchor_hash(
+            event_id=submit_event_id,
+            complaint_id=complaint_id,
+            event_hash=submit_hash,
+            timestamp=created_ts,
+        )
+
+        prev_hash = submit_hash
+        for event in scenario["events"]:
+            ts = (
+                created_at + timedelta(hours=event.get("offset_hours", 0))
+            ).replace(microsecond=0).isoformat()
+            remarks = event.get("remarks", "")
+            event_type = event["type"]
+            actor = event.get("actor") or citizen_id
+            if event.get("skip_anchor"):
+                missing_event = _insert_unanchored_event(
+                    complaint_id, event_type, actor, remarks, ts
+                )
+            else:
+                with get_db() as conn:
+                    cursor = conn.cursor()
+                    event_id = new_event_id()
+                    cursor.execute(
+                        """
+                        INSERT INTO complaint_events (
+                            event_id, complaint_id, event_type, actor_id, remarks, timestamp
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (event_id, complaint_id, event_type, actor, remarks, ts),
+                    )
+                    cursor.execute(
+                        "UPDATE complaints SET current_status = ? WHERE complaint_id = ?",
+                        (event_type, complaint_id),
+                    )
+                    conn.commit()
+
+                payload = canonical_event_payload(
+                    complaint_id=complaint_id,
+                    event_id=event_id,
+                    event_type=event_type,
+                    actor_id=actor,
+                    remarks=remarks,
+                    timestamp=ts,
+                    prev_event_hash=prev_hash,
+                )
+                event_hash = sha256(canonical_json(payload))
+                get_ledger_backend().anchor_hash(
+                    event_id=event_id,
+                    complaint_id=complaint_id,
+                    event_hash=event_hash,
+                    timestamp=ts,
+                )
+                prev_hash = event_hash
+
+        seeded_ids.append(complaint_id)
+
+    if seeded_ids:
+        tampered = _simulate_tamper(seeded_ids[0])
+
+    return {
+        "inserted": len(seeded_ids),
+        "complaints": seeded_ids,
+        "tampered": tampered,
+        "missing_event": missing_event,
+        "officers": officers,
+        "skipped": False,
+    }
 
 
 def _record_event(
@@ -650,6 +979,9 @@ def _run_benchmark(complaint_count: int, events_per_complaint: int) -> Dict:
         "max_cvl_ms": max(cvls) if cvls else 0,
         "chart": chart_points,
     }
+    BENCHMARK_RUNS.append(result)
+    if len(BENCHMARK_RUNS) > 10:
+        BENCHMARK_RUNS.pop(0)
 
 
 def _baseline_cvl_seconds() -> float:
@@ -964,6 +1296,30 @@ def index():
 def dashboard():
     dashboard_data = _build_dashboard_data()
     return render_template("dashboard.html", **dashboard_data)
+
+
+@app.route("/seed", methods=["GET", "POST"])
+def seed():
+    seeded = None
+    error = None
+    if request.method == "POST":
+        seeded = _seed_demo_dataset()
+        if seeded.get("skipped"):
+            error = seeded.get("reason", "Demo dataset already present.")
+            seeded = None
+        if seeded.get("error"):
+            error = seeded["error"]
+            seeded = None
+    snapshot = _build_dashboard_data()
+    return render_template(
+        "seed.html",
+        seeded=seeded,
+        error=error,
+        already_seeded=snapshot.get("demo_seeded", False),
+        has_data=snapshot.get("has_data", False),
+        complaint_summary=snapshot.get("complaint_summary", {}),
+        integrity_summary=snapshot.get("integrity_summary", {}),
+    )
 
 
 @app.route("/research", methods=["GET", "POST"])

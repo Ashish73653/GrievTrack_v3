@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app import AUDIT_HISTORY, app
+from app import AUDIT_HISTORY, BENCHMARK_RUNS, RESEARCH_RUNS, app
 from db import get_db, init_db
 
 
@@ -24,6 +24,8 @@ def clean_db():
     if log_path.exists():
         log_path.unlink()
     AUDIT_HISTORY.clear()
+    RESEARCH_RUNS.clear()
+    BENCHMARK_RUNS.clear()
     yield
 
 

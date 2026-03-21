@@ -34,6 +34,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  const nav = document.querySelector("[data-nav]");
+  const navToggle = document.querySelector("[data-nav-toggle]");
+  if (nav && navToggle) {
+    const closeNav = () => {
+      nav.classList.remove("open");
+      navToggle.setAttribute("aria-expanded", "false");
+    };
+    navToggle.addEventListener("click", () => {
+      const isOpen = nav.classList.toggle("open");
+      navToggle.setAttribute("aria-expanded", isOpen.toString());
+    });
+    nav.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", closeNav);
+    });
+  }
+
   const lockButtons = document.querySelectorAll("[data-require-text]");
   lockButtons.forEach((button) => {
     const fieldId = button.getAttribute("data-require-text");
