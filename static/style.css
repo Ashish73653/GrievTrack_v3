@@ -184,6 +184,12 @@ main {
     color: var(--muted);
 }
 
+.breadcrumb {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
 .page-header .quick {
     display: flex;
     gap: 10px;
@@ -738,6 +744,11 @@ textarea {
     gap: 6px;
     align-items: center;
     min-width: 0;
+    max-width: 360px;
+}
+
+.hash-cell .hash {
+    white-space: nowrap;
 }
 
 .print-note {
@@ -770,6 +781,40 @@ textarea {
     margin: 0;
     padding-left: 18px;
     color: var(--text);
+}
+
+.attack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0f172a;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 12px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success {
+    background: #15803d;
+}
+
+.toast-error {
+    background: #dc2626;
 }
 
 @media (max-width: 800px) {

@@ -37,7 +37,7 @@
             <div>
                 <p class="label">Integrity</p>
                 <p class="value">{{ integrity_summary.total_events }}</p>
-                <p class="small muted">{{ integrity_summary.global_eis }}% EIS · {{ integrity_summary.tampered_events }} flagged</p>
+                <p class="small muted">{{ integrity_summary.global_eis }}% EIS · {{ integrity_summary.global_aci }}% ACI · {{ integrity_summary.tampered_events }} flagged</p>
             </div>
         </div>
         <div class="summary-card">
@@ -63,6 +63,18 @@
                 <p class="label">Audit performance</p>
                 <p class="value">{{ audit_summary.audits_run }}</p>
                 <p class="small muted">Avg CVL {{ audit_summary.avg_cvl_ms }} ms · last {{ audit_summary.last_cvl_ms }} ms</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="icon" aria-hidden="true" style="background:#f5f3ff;color:#5b21b6;box-shadow:inset 0 0 0 1px #ddd6fe;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 7h16"></path><path d="M4 12h10"></path><path d="M4 17h6"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="label">Time to resolution</p>
+                <p class="value">{{ trt_summary.avg_hours }}h</p>
+                <p class="small muted">Avg TRT overall · more below</p>
             </div>
         </div>
     </div>
@@ -143,6 +155,29 @@
         </div>
     </div>
 
+    <div class="grid">
+        <div class="card">
+            <div class="section-title">
+                <div>
+                    <h3>Avg Time to Resolution by Priority</h3>
+                    <p class="muted small">TRT = CLOSED timestamp minus SUBMIT timestamp</p>
+                </div>
+                <span class="badge-neutral">Live</span>
+            </div>
+            <div class="chart-box"><canvas id="trtByPriority"></canvas></div>
+        </div>
+        <div class="card">
+            <div class="section-title">
+                <div>
+                    <h3>Global Integrity Breakdown</h3>
+                    <p class="muted small">MATCH vs TAMPERED vs ledger gaps</p>
+                </div>
+                <span class="badge-neutral">Session</span>
+            </div>
+            <div class="chart-box"><canvas id="integrityBreakdown"></canvas></div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="section-title">
             <div>
@@ -215,5 +250,48 @@
     renderLineChart('eisTrend', chartData.eis.labels, chartData.eis.values, 'EIS', '#2563eb');
     renderLineChart('cvlTrend', chartData.cvl.labels, chartData.cvl.values, 'CVL (ms)', '#15803d');
     renderBarChart('slaByOfficer', chartData.sla_by_officer.labels, chartData.sla_by_officer.within, chartData.sla_by_officer.delayed);
+
+    function renderStackedBar(id, labels, values, label, color) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{ label, data: values, backgroundColor: color }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } },
+            },
+        });
+    }
+
+    function renderPie(id, labels, values) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: ['#16a34a', '#dc2626', '#b45309', '#0ea5e9', '#5b21b6'],
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+            },
+        });
+    }
+
+    renderStackedBar('trtByPriority', chartData.trt_by_priority.labels, chartData.trt_by_priority.values, 'Avg TRT (h)', '#5b21b6');
+    renderPie('integrityBreakdown', chartData.integrity_breakdown.labels, chartData.integrity_breakdown.values);
 </script>
 {% endblock %}

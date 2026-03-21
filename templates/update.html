@@ -26,7 +26,7 @@
     <div class="alert error">{{ error }}</div>
     {% endif %}
 
-    <form method="post" class="form">
+    <form method="post" class="form" id="update-form">
         <div class="form-grid">
             <div class="field">
                 <label for="complaint_id">Complaint ID</label>
@@ -59,6 +59,7 @@
         </div>
         <div class="actions">
             <button class="btn btn-primary" type="submit">Record update</button>
+            <button class="btn btn-ghost" type="button" data-fill-demo data-target="update-form">Use sample demo values</button>
             <span class="print-note">Next: audit the chain to verify integrity.</span>
         </div>
     </form>

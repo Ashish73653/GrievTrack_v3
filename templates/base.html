@@ -23,6 +23,7 @@
                     <a class="nav-link {% if request.endpoint in ['update'] %}active{% endif %}" href="{{ url_for('update') }}">Update</a>
                     <a class="nav-link {% if request.endpoint in ['timeline'] %}active{% endif %}" href="{{ url_for('timeline') }}">Timeline</a>
                     <a class="nav-link {% if request.endpoint in ['audit'] %}active{% endif %}" href="{{ url_for('audit') }}">Audit</a>
+                    <a class="nav-link {% if request.endpoint in ['attacks'] %}active{% endif %}" href="{{ url_for('attacks') }}">Attacks</a>
                     <a class="nav-link {% if request.endpoint in ['benchmark_run'] %}active{% endif %}" href="{{ url_for('benchmark_run') }}">Benchmark</a>
                     <a class="nav-link {% if request.endpoint in ['reset'] %}active{% endif %}" href="{{ url_for('reset') }}">Reset</a>
                 </div>

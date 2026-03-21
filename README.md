@@ -85,6 +85,15 @@ SLA thresholds: HIGH/URGENT ≤ 24h, MEDIUM/NORMAL ≤ 7d, LOW ≤ 30d.
 - Delete → ledger/off-chain mismatch or missing anchor ⇒ chain BROKEN, EIS drops.
 - Insert/Reorder → prev-hash continuity check flags unexpected links.
 
+## Attack Demonstrations (Auditor Lab)
+| Attack | Expected detection signals |
+| --- | --- |
+| MODIFY_LATEST_REMARKS | Event status = TAMPERED, chain status BROKEN |
+| DELETE_LATEST_EVENT (off-chain) | Missing off-chain entry → MISSING_OFFCHAIN status, chain BROKEN |
+| DELETE_LEDGER_ANCHOR | Missing ledger anchor → MISSING_LEDGER status, chain BROKEN |
+| INSERT_FAKE_EVENT | Unanchored event → MISSING_LEDGER status, EIS drops |
+| REORDER_ATTACK | Timestamp order check → ORDER_ANOMALY status, chain BROKEN |
+
 ## Architecture
 ```
 Citizen/Officer
