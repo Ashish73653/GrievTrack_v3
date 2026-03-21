@@ -43,6 +43,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const navToggle = document.querySelector("[data-nav-toggle]");
   const actionsToggle = document.querySelector("[data-actions-toggle]");
   const actionsMenu = document.querySelector("[data-actions-menu]");
+  const moreToggle = document.querySelector("[data-more-toggle]");
+  const moreMenu = document.querySelector("[data-more-menu]");
 
   const closeActions = () => {
     if (actionsMenu && actionsToggle) {
@@ -51,17 +53,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  const closeMore = () => {
+    if (moreMenu && moreToggle) {
+      moreMenu.classList.remove("open");
+      moreToggle.setAttribute("aria-expanded", "false");
+    }
+  };
+
   if (nav && navToggle) {
     const closeNav = () => {
       nav.classList.remove("open");
       navToggle.setAttribute("aria-expanded", "false");
       closeActions();
+      closeMore();
     };
     navToggle.addEventListener("click", () => {
       const isOpen = nav.classList.toggle("open");
       navToggle.setAttribute("aria-expanded", isOpen.toString());
       if (!isOpen) {
         closeActions();
+        closeMore();
       }
     });
     nav.querySelectorAll("a").forEach((link) => {
@@ -78,6 +89,18 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("click", (event) => {
       if (actionsMenu.contains(event.target) || actionsToggle.contains(event.target)) return;
       closeActions();
+    });
+  }
+
+  if (moreToggle && moreMenu) {
+    moreToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = moreMenu.classList.toggle("open");
+      moreToggle.setAttribute("aria-expanded", isOpen.toString());
+    });
+    document.addEventListener("click", (event) => {
+      if (moreMenu.contains(event.target) || moreToggle.contains(event.target)) return;
+      closeMore();
     });
   }
 

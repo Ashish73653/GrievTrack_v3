@@ -16,7 +16,6 @@
                 <div class="brand-mark">GT</div>
                 <div class="brand-text">
                     <span class="brand-title">GrievTrack</span>
-                    <span class="brand-subtitle">Ledger-anchored grievance lab</span>
                 </div>
             </a>
             <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" data-nav-toggle>
@@ -28,13 +27,25 @@
                 <a class="nav-link {% if request.endpoint in ['update'] %}active{% endif %}" href="{{ url_for('update') }}">Update</a>
                 <a class="nav-link {% if request.endpoint in ['timeline'] %}active{% endif %}" href="{{ url_for('timeline') }}">Timeline</a>
                 <a class="nav-link {% if request.endpoint in ['audit'] %}active{% endif %}" href="{{ url_for('audit') }}">Audit</a>
-                <a class="nav-link {% if request.endpoint in ['research'] %}active{% endif %}" href="{{ url_for('research') }}">Simulation Lab</a>
-                <a class="nav-link {% if request.endpoint in ['attacks'] %}active{% endif %}" href="{{ url_for('attacks') }}">Attacks</a>
-                <a class="nav-link {% if request.endpoint in ['benchmark_run'] %}active{% endif %}" href="{{ url_for('benchmark_run') }}">Benchmark</a>
-                <a class="nav-link {% if request.endpoint in ['reset'] %}active{% endif %}" href="{{ url_for('reset') }}">Reset</a>
+                <div class="nav-dropdown">
+                    <button class="nav-link nav-dropdown-toggle {% if request.endpoint in ['research','attacks','benchmark_run','reset'] %}active{% endif %}" type="button" aria-expanded="false" data-more-toggle>More ▾</button>
+                    <div class="dropdown nav-dropdown" data-more-menu>
+                        <a href="{{ url_for('research') }}">Simulation Lab / Research</a>
+                        <a href="{{ url_for('attacks') }}">Attacks</a>
+                        <a href="{{ url_for('benchmark_run') }}">Benchmark</a>
+                        <a href="{{ url_for('seed') }}">Seed demo data</a>
+                        <a href="{{ url_for('reset') }}">Reset</a>
+                    </div>
+                </div>
+                <div class="nav-mobile-actions">
+                    <span class="meta">Actions</span>
+                    <a class="nav-link" href="{{ url_for('seed') }}">Seed demo data</a>
+                    <a class="nav-link" href="{{ url_for('submit') }}">New grievance</a>
+                    <a class="nav-link" href="{{ url_for('audit') }}">Launch audit</a>
+                </div>
             </div>
             <div class="nav-actions print-hide">
-                <button class="btn btn-ghost btn-sm actions-trigger" type="button" aria-expanded="false" data-actions-toggle>
+                <button class="btn btn-ghost btn-xs actions-trigger" type="button" aria-expanded="false" data-actions-toggle>
                     Actions ▾
                 </button>
                 <div class="dropdown" data-actions-menu>
