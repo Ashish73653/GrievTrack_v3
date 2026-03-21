@@ -36,6 +36,11 @@ export GRIEVTRACK_LEDGER_BACKEND=fabric_stub  # default is sqlite
 - Use **Seed demo data** (`/seed`) to append a curated dataset: 10 complaints across Infrastructure/Sanitation/Water/Safety/Electricity, officers OFF001–OFF005, realistic SLA timings (within + delayed), plus a tampered event and one missing-ledger follow-up so integrity charts are not flat.
 - The dashboard shows a prompt when empty—click **Seed demo data** to light up charts and tables immediately. Demo badge appears while seeded data is present (citizen IDs prefixed `demo-`).
 - Reset wipes everything: complaints, complaint_events, ledger_hashes, in-memory histories (audit/research/benchmark), and the Fabric stub log at `fabric_stub/anchored_log.jsonl`.
+- Seed is idempotent: pressing the Seed button repeatedly will not duplicate rows (deterministic IDs `SEED-CMP-001...`).
+- The seed page surfaces an “already present” banner with counts on a second run; use **Go to dashboard** from there.
+- Reset clears the seeded rows, ledger anchors, anchored log, and in-memory audit/research/benchmark runs in one click.
+- Seed payload keeps the tampered and missing-ledger examples so audit charts are never empty.
+- Audit JSON export stays aligned with the on-screen table; hashes are copyable for inspectors.
 
 ### Teacher-ready demo scenarios
 - **Scenario A (seeded pulse):** Seed → Dashboard → Audit one seeded complaint to highlight mixed integrity (tamper + missing-ledger visible in Integrity Breakdown and Audit table).

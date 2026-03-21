@@ -34,6 +34,11 @@
                     <a class="nav-link {% if request.endpoint in ['benchmark_run'] %}active{% endif %}" href="{{ url_for('benchmark_run') }}">Benchmark</a>
                     <a class="nav-link {% if request.endpoint in ['reset'] %}active{% endif %}" href="{{ url_for('reset') }}">Reset</a>
                 </div>
+                <div class="nav-cta print-hide">
+                    <a class="btn btn-ghost btn-xs" href="{{ url_for('seed') }}">Seed data</a>
+                    <a class="btn btn-ghost btn-xs" href="{{ url_for('submit') }}">New grievance</a>
+                    <a class="btn btn-primary btn-xs" href="{{ url_for('audit') }}">Launch audit</a>
+                </div>
             </nav>
             <div class="top-actions print-hide">
                 <a class="btn btn-ghost" href="{{ url_for('seed') }}">Seed data</a>
