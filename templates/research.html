@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% import "_components.html" as ui %}
+
 {% block title %}Simulation Lab | GrievTrack{% endblock %}
 
 {% block content %}
@@ -71,6 +73,16 @@
                 <span class="badge-neutral">Simulated experiment</span>
             </div>
             <div class="chart-box tall"><canvas id="cvlScalability"></canvas></div>
+            {{ ui.chart_caption(
+                "What this graph tells",
+                "Simulated verification latency as event counts grow, comparing anchored GrievTrack runs (measured baseline) with a pure cloud model on a log scale.",
+                "CVL (s) = verification_duration_seconds per dataset size",
+                [
+                    "Anchored and cloud lines staying close means the ledger swap-in does not add heavy overhead.",
+                    "Divergence or sharp bends upward at higher events suggest scalability tuning targets.",
+                    "Log axis: equal spacing means orders of magnitude; gentle slopes are good news for growth."
+                ]
+            ) }}
         </div>
         <div class="card">
             <div class="section-title">
@@ -81,6 +93,16 @@
                 <span class="badge-neutral">Simulated experiment</span>
             </div>
             <div class="chart-box tall"><canvas id="eisTamper"></canvas></div>
+            {{ ui.chart_caption(
+                "What this graph tells",
+                "Paper-style view of integrity resilience when tamper rate rises, contrasting anchored hashes with an unanchored cloud model.",
+                "EIS = matched_events / total_events × 100 at each tamper_rate",
+                [
+                    "Anchored line should decline slowly; if it falls sharply, the chain rules need reinforcement.",
+                    "The cloud curve represents a weaker baseline—use it to explain the benefit of anchoring.",
+                    "Flat areas show robustness; kinks or drops highlight attack thresholds worth discussing."
+                ]
+            ) }}
         </div>
     </div>
 

@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% import "_components.html" as ui %}
+
 {% block title %}Audit | GrievTrack{% endblock %}
 
 {% block content %}
@@ -188,6 +190,17 @@
             <p class="small muted">Status breakdown for this complaint</p>
             <div class="chart-box"><canvas id="statusBreakdown"></canvas></div>
         </div>
+        {{ ui.chart_caption(
+            "What this graph tells",
+            "Each event is recomputed and compared to its anchored ledger hash; statuses show where tampering or missing anchors occurred.",
+            "Status = compare recomputed_hash to ledger_hash; Chain status = prev_hash continuity against expected_prev_event_hash",
+            [
+                "MATCH rows keep the chain intact; TAMPERED means the payload changed since anchoring.",
+                "Missing ledger/off-chain highlights delete/insert gaps; chain BROKEN/LEGACY means prev_hash continuity failed.",
+                "Use the copy buttons to lift hashes into an external verifier or JSON export."
+            ]
+        ) }}
+        {{ ui.status_legend() }}
         <div class="table-wrap">
             <table class="table audit-table">
                 <thead>
@@ -266,6 +279,16 @@
             <div class="chart-box"><canvas id="cvlChart"></canvas></div>
         </div>
     </div>
+    {{ ui.chart_caption(
+        "What this graph tells",
+        "Session audit history: integrity (EIS) and verification latency (CVL) across every run performed since startup.",
+        "EIS = matched_events / total_events × 100; CVL = audit_runtime_ms_per_complaint",
+        [
+            "Look for EIS drops after simulated tamper/attacks; a recovery to ~100% proves fixes worked.",
+            "CVL spikes suggest heavier chains or slower backend; Benchmark can confirm scalability.",
+            "Stable, flat lines mean the ledger backend and hash chaining are consistent between runs."
+        ]
+    ) }}
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

@@ -23,7 +23,7 @@
                 <span></span><span></span><span></span>
             </button>
             <nav class="nav" data-nav>
-                <div class="nav-links">
+                <div class="nav-links" role="navigation">
                     <a class="nav-link {% if request.endpoint in ['dashboard'] %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
                     <a class="nav-link {% if request.endpoint in ['submit'] %}active{% endif %}" href="{{ url_for('submit') }}">Submit</a>
                     <a class="nav-link {% if request.endpoint in ['update'] %}active{% endif %}" href="{{ url_for('update') }}">Update</a>
@@ -34,17 +34,17 @@
                     <a class="nav-link {% if request.endpoint in ['benchmark_run'] %}active{% endif %}" href="{{ url_for('benchmark_run') }}">Benchmark</a>
                     <a class="nav-link {% if request.endpoint in ['reset'] %}active{% endif %}" href="{{ url_for('reset') }}">Reset</a>
                 </div>
-                <div class="nav-cta print-hide">
-                    <a class="btn btn-ghost btn-xs" href="{{ url_for('seed') }}">Seed data</a>
-                    <a class="btn btn-ghost btn-xs" href="{{ url_for('submit') }}">New grievance</a>
-                    <a class="btn btn-primary btn-xs" href="{{ url_for('audit') }}">Launch audit</a>
+                <div class="nav-actions print-hide">
+                    <button class="btn btn-ghost btn-xs actions-trigger" type="button" aria-expanded="false" data-actions-toggle>
+                        Actions ▾
+                    </button>
+                    <div class="actions-menu" data-actions-menu>
+                        <a href="{{ url_for('seed') }}">Seed data</a>
+                        <a href="{{ url_for('submit') }}">New grievance</a>
+                        <a href="{{ url_for('audit') }}">Launch audit</a>
+                    </div>
                 </div>
             </nav>
-            <div class="top-actions print-hide">
-                <a class="btn btn-ghost" href="{{ url_for('seed') }}">Seed data</a>
-                <a class="btn btn-ghost" href="{{ url_for('submit') }}">New grievance</a>
-                <a class="btn btn-primary" href="{{ url_for('audit') }}">Launch audit</a>
-            </div>
         </div>
     </header>
     <main class="container content">

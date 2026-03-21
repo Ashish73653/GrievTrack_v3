@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% import "_components.html" as ui %}
+
 {% block title %}Benchmark | GrievTrack{% endblock %}
 
 {% block content %}
@@ -93,6 +95,16 @@
                 </div>
             </div>
             <div class="chart-wrapper"><canvas id="benchmarkChart"></canvas></div>
+            {{ ui.chart_caption(
+                "What this graph tells",
+                "Scatter of verification latency against total events per synthetic complaint for this capped run.",
+                "CVL = audit_runtime_ms_per_complaint; Total events ≈ complaints × events_per_complaint",
+                [
+                    "A flat or gentle slope means scalability is acceptable at this size.",
+                    "Outliers high on the Y-axis signal heavier chains or slower anchors to investigate.",
+                    "Rerun with different N/M (within caps) to compare how the slope moves."
+                ]
+            ) }}
         </div>
         <div class="card">
             <div class="section-title">

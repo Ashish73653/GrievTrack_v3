@@ -92,8 +92,9 @@ main {
     align-items: center;
     gap: 16px;
     justify-content: space-between;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     position: relative;
+    min-width: 0;
 }
 
 .brand {
@@ -133,16 +134,20 @@ main {
 .nav {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 100%;
+    justify-content: space-between;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
 }
 
 .nav-links {
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding: 6px 0;
+    gap: 14px;
+    padding: 0;
     justify-content: center;
+    white-space: nowrap;
+    overflow-x: auto;
+    flex: 1;
 }
 
 .nav-link {
@@ -176,6 +181,46 @@ main {
     display: none;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.actions-trigger {
+    white-space: nowrap;
+}
+
+.actions-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 180px;
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    z-index: 40;
+}
+
+.actions-menu a {
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-weight: 600;
+}
+
+.actions-menu.open {
+    display: flex;
 }
 
 .nav-toggle {
@@ -857,6 +902,95 @@ textarea {
     font-size: 12px;
 }
 
+.chart-caption {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.chart-caption .caption-title {
+    margin: 0 0 4px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.chart-caption .caption-body {
+    margin: 0 0 6px;
+}
+
+.chart-caption .caption-formula {
+    margin: 0 0 6px;
+    color: var(--text);
+    font-weight: 700;
+}
+
+.chart-caption .caption-list {
+    margin: 0;
+    padding-left: 16px;
+    display: grid;
+    gap: 4px;
+}
+
+.status-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+    color: var(--muted);
+    margin: 8px 0 0;
+}
+
+.status-legend .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #fff;
+}
+
+.status-legend .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #16a34a;
+}
+
+.status-legend .dot.warn {
+    background: #b45309;
+}
+
+.status-legend .dot.danger {
+    background: #dc2626;
+}
+
+.status-legend .dot.purple {
+    background: #5b21b6;
+}
+
+.status-legend .legend-label.success {
+    color: #16a34a;
+}
+
+.status-legend .legend-label.warn {
+    color: #b45309;
+}
+
+.status-legend .legend-label.danger {
+    color: #dc2626;
+}
+
+.status-legend .legend-label.purple {
+    color: #5b21b6;
+}
+
 .table-note {
     margin: 8px 0 0;
     color: var(--muted);
@@ -955,6 +1089,7 @@ textarea {
 @media (max-width: 900px) {
     .topbar__inner {
         align-items: flex-start;
+        flex-wrap: wrap;
     }
     .nav-toggle {
         display: inline-flex;
@@ -971,6 +1106,7 @@ textarea {
         flex-direction: column;
         gap: 12px;
         box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
+        width: auto;
     }
     .nav.open {
         display: flex;
@@ -978,11 +1114,28 @@ textarea {
     .nav-links {
         flex-direction: column;
         gap: 8px;
+        width: 100%;
+        overflow-x: visible;
     }
     .nav-link {
         width: 100%;
         border-color: rgba(255, 255, 255, 0.15);
         justify-content: space-between;
+    }
+    .nav-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .actions-menu {
+        position: static;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.16);
+        box-shadow: none;
+    }
+    .actions-menu a {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.14);
     }
     .nav-cta {
         display: flex;
